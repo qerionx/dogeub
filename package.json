@@ -1,7 +1,7 @@
 {
   "name": "v5-react-2",
   "private": true,
-  "version": "5.0.3",
+  "version": "5.0.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -30,6 +30,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.1",
     "fastify": "^5.4.0",
+    "jszip": "^3.10.1",
     "lucide": "^0.536.0",
     "lucide-react": "^0.536.0",
     "movement.css": "^1.1.2",

@@ -34,9 +34,12 @@ input {
 .app {
   margin: 0.75rem;
   width: 15rem;
+  height: 13.5rem;
   border-radius: 25px;
   font-size: 16px;
   padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .app:hover {

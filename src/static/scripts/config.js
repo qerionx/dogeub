@@ -1,6 +1,7 @@
 import apps from '/src/data/apps.json';
 
-const gFilters = (apps.games || [])
+const allGames = apps.games ? Object.values(apps.games).flat() : [];
+const gFilters = allGames
   .filter((game) => /^https?:\/\//.test(game.url))
   .map((game) => ({
     url: new URL(game.url).hostname.replace(/^www\./, ''),

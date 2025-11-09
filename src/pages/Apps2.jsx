@@ -1,7 +1,7 @@
-import AppLayout from '../layouts/Apps';
+import GamesLayout from '../layouts/Apps2';
 import { memo } from 'react';
 
-const Gms = memo(() => <AppLayout type="games" />);
+const Gms = memo(() => <GamesLayout />);
 
 Gms.displayName = 'Games';
 export default Gms;
