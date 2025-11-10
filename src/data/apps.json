@@ -38,6 +38,13 @@
       "disabled": false
     },
     {
+      "appName": "Movies/TV",
+      "desc": "Watch and stream movies and TV shows.",
+      "icon": "/assets/img/movie-logo.webp",
+      "url": "https://beech.watch",
+      "disabled": false
+    },
+    {
       "appName": "GeForce NOW",
       "desc": "Play high-end PC games via GeForce NOW cloud.",
       "icon": "/assets/img/geforcenow.webp",
