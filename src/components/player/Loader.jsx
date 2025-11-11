@@ -9,7 +9,7 @@ import { useLocalGmLoader } from '/src/utils/useLocalGmLoader';
 const Loader = ({ theme, app }) => {
   const gmRef = useRef(null);
   const [zoom, setZoom] = useState(1);
-  const { gameUrl, loading, downloading } = useLocalGmLoader(app);
+  const { gmUrl, loading, downloading } = useLocalGmLoader(app);
 
   const fs = () => gmRef.current?.requestFullscreen?.();
 
@@ -32,7 +32,7 @@ const Loader = ({ theme, app }) => {
     setZoom(newZoom);
   };
 
-  const iframeSrc = app?.local ? gameUrl : '/src/static/loader.html?ui=false';
+  const iframeSrc = app?.local ? gmUrl : '/src/static/loader.html?ui=false';
 
   return (
     <div

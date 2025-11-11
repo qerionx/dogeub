@@ -1,24 +1,26 @@
 import JSZip from 'jszip';
 
 const DB_NAME = 'gm loader db';
-const DB_VERSION = 1;
+const DB_VER = 1;
 const STORE_NAME = 'gms';
+const TEXT_EXTS = new Set(['html', 'htm', 'css', 'js', 'mjs', 'json', 'xml', 'txt', 'md', 'csv', 'svg']);
 
 class LocalGmLoader {
   constructor() {
     this.db = null;
   }
 
-  initDB() {
+  async initDB() {
+    if (this.db) return this.db;
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        this.db = request.result;
+      const req = indexedDB.open(DB_NAME, DB_VER);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        this.db = req.result;
         resolve(this.db);
       };
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         }
@@ -26,195 +28,153 @@ class LocalGmLoader {
     });
   }
 
-  async saveGame(db, gameName, files) {
+  async dbAction(mode, action) {
+    const db = await this.initDB();
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const gameData = {
-        id: gameName,
-        name: gameName,
-        files: files,
-        uploadDate: new Date().toISOString(),
-        lastPlayed: new Date().toISOString()
-      };
-      const request = store.put(gameData);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      const tx = db.transaction([STORE_NAME], mode);
+      const store = tx.objectStore(STORE_NAME);
+      action(store, resolve, reject);
     });
   }
 
-  async updateLastPlayed(db, gameName) {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const getRequest = store.get(gameName);
-      
-      getRequest.onsuccess = () => {
-        const gameData = getRequest.result;
-        if (gameData) {
-          gameData.lastPlayed = new Date().toISOString();
-          const putRequest = store.put(gameData);
-          putRequest.onsuccess = () => resolve();
-          putRequest.onerror = () => reject(putRequest.error);
+  async saveGm(gmName, files) {
+    return this.dbAction('readwrite', (store, resolve, reject) => {
+      const req = store.put({
+        id: gmName,
+        name: gmName,
+        files,
+        uploadDate: new Date().toISOString(),
+        lastPlayed: new Date().toISOString()
+      });
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async updateLastPlayed(gmName) {
+    return this.dbAction('readwrite', (store, resolve, reject) => {
+      const getReq = store.get(gmName);
+      getReq.onsuccess = () => {
+        const gm = getReq.result;
+        if (gm) {
+          gm.lastPlayed = new Date().toISOString();
+          const putReq = store.put(gm);
+          putReq.onsuccess = () => resolve();
+          putReq.onerror = () => reject(putReq.error);
         } else {
           resolve();
         }
       };
-      getRequest.onerror = () => reject(getRequest.error);
+      getReq.onerror = () => reject(getReq.error);
     });
   }
 
-  async cleanupOldGames(db) {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.openCursor();
-      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-      
-      request.onsuccess = (event) => {
-        const cursor = event.target.result;
+  async cleanupOld() {
+    return this.dbAction('readwrite', (store, resolve, reject) => {
+      const req = store.openCursor();
+      const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
+      req.onsuccess = (e) => {
+        const cursor = e.target.result;
         if (cursor) {
-          const game = cursor.value;
-          const lastPlayed = new Date(game.lastPlayed || game.uploadDate);
-          if (lastPlayed < threeDaysAgo) {
-            cursor.delete();
-          }
+          const gm = cursor.value;
+          const lastPlayed = new Date(gm.lastPlayed || gm.uploadDate).getTime();
+          if (lastPlayed < cutoff) cursor.delete();
           cursor.continue();
         } else {
           resolve();
         }
       };
-      request.onerror = () => reject(request.error);
+      req.onerror = () => reject(req.error);
     });
   }
 
-  async getGame(db, gameName) {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([STORE_NAME], 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.get(gameName);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+  async getGm(gmName) {
+    return this.dbAction('readonly', (store, resolve, reject) => {
+      const req = store.get(gmName);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
     });
   }
 
-  getMimeType(filename) {
+  isBinary(filename) {
     const ext = filename.split('.').pop().toLowerCase();
-    const mimeTypes = {
-      html: 'text/html',
-      htm: 'text/html',
-      css: 'text/css',
-      js: 'application/javascript',
-      mjs: 'application/javascript',
-      json: 'application/json',
-      xml: 'application/xml',
-      txt: 'text/plain',
-      md: 'text/markdown',
-      csv: 'text/csv',
-      png: 'image/png',
-      jpg: 'image/jpeg',
-      jpeg: 'image/jpeg',
-      gif: 'image/gif',
-      svg: 'image/svg+xml',
-      ico: 'image/x-icon',
-      webp: 'image/webp',
-      bmp: 'image/bmp',
-      avif: 'image/avif',
-      woff: 'font/woff',
-      woff2: 'font/woff2',
-      ttf: 'font/ttf',
-      otf: 'font/otf',
-      eot: 'application/vnd.ms-fontobject',
-      mp3: 'audio/mpeg',
-      wav: 'audio/wav',
-      ogg: 'audio/ogg',
-      m4a: 'audio/mp4',
-      aac: 'audio/aac',
-      mp4: 'video/mp4',
-      webm: 'video/webm',
-      ogv: 'video/ogg',
-      wasm: 'application/wasm',
-      zip: 'application/zip',
-      gz: 'application/gzip',
-      pdf: 'application/pdf',
-      data: 'application/octet-stream',
-      unityweb: 'application/octet-stream',
-      bundle: 'application/octet-stream',
-      bin: 'application/octet-stream',
-      dat: 'application/octet-stream',
-      mem: 'application/octet-stream',
-      asset: 'application/octet-stream',
-      resource: 'application/octet-stream',
-    };
-    return mimeTypes[ext] || 'application/octet-stream';
+    return !TEXT_EXTS.has(ext);
   }
 
-  isBinaryFile(filename) {
-    const ext = filename.split('.').pop().toLowerCase();
-    const textExtensions = new Set(['html', 'htm', 'css', 'js', 'mjs', 'json', 'xml', 'txt', 'md', 'csv', 'svg']);
-    return !textExtensions.has(ext);
-  }
-
-  async extractZip(zipUrl) {
-    const response = await fetch(zipUrl);
-    const blob = await response.blob();
-    const zip = new JSZip();
-    const contents = await zip.loadAsync(blob);
+  async extractZip(url) {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const zip = await new JSZip().loadAsync(blob);
     const files = {};
     
-    for (const [path, zipEntry] of Object.entries(contents.files)) {
-      if (!zipEntry.dir) {
-        const isBinary = this.isBinaryFile(path);
-        const mimeType = this.getMimeType(path);
-        const content = await zipEntry.async(isBinary ? 'base64' : 'string');
-        
+    for (const [path, entry] of Object.entries(zip.files)) {
+      if (!entry.dir) {
+        const isBin = this.isBinary(path);
         files[path] = {
-          content: content,
-          mime: mimeType,
-          binary: isBinary,
+          content: await entry.async(isBin ? 'base64' : 'string'),
+          mime: this.getMime(path),
+          binary: isBin
         };
       }
     }
     return files;
   }
 
-  async registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-      try {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        const existing = regs.find(reg => reg.active?.scriptURL.includes('/loadersw.js'));
-        if (!existing) {
-          await navigator.serviceWorker.register('/loadersw.js');
-        }
-      } catch (error) {
-        console.error('sw error:', error);
-      }
+  getMime(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const types = {
+      html: 'text/html', htm: 'text/html', css: 'text/css',
+      js: 'application/javascript', mjs: 'application/javascript',
+      json: 'application/json', xml: 'application/xml',
+      txt: 'text/plain', md: 'text/markdown', csv: 'text/csv',
+      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+      gif: 'image/gif', svg: 'image/svg+xml', ico: 'image/x-icon',
+      webp: 'image/webp', bmp: 'image/bmp', avif: 'image/avif',
+      woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf',
+      otf: 'font/otf', eot: 'application/vnd.ms-fontobject',
+      mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg',
+      m4a: 'audio/mp4', aac: 'audio/aac',
+      mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg',
+      wasm: 'application/wasm', zip: 'application/zip',
+      gz: 'application/gzip', pdf: 'application/pdf',
+      data: 'application/octet-stream', unityweb: 'application/octet-stream',
+      bundle: 'application/octet-stream', bin: 'application/octet-stream',
+      dat: 'application/octet-stream', mem: 'application/octet-stream',
+      asset: 'application/octet-stream', resource: 'application/octet-stream'
+    };
+    return types[ext] || 'application/octet-stream';
+  }
+
+  async regSW() {
+    if (!('serviceWorker' in navigator)) return;
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      const existing = regs.find(r => r.active?.scriptURL.includes('/loadersw.js'));
+      if (!existing) await navigator.serviceWorker.register('/loadersw.js');
+    } catch (err) {
+      console.error('sw error:', err);
     }
   }
 
-  async loadGm(gameUrl) {
-    await this.registerServiceWorker();
-    const db = await this.initDB();
+  async load(url, onDownload) {
+    await this.regSW();
+    await this.initDB();
+    await this.cleanupOld();
     
-    await this.cleanupOldGames(db);
+    const gmName = url.split('/').pop().replace('.zip', '') || 'gm-' + Date.now();
+    const existing = await this.getGm(gmName);
     
-    const gameName = gameUrl.split('/').pop().replace('.zip', '') || 'game-' + Date.now();
-    
-    const existing = await this.getGame(db, gameName);
     if (existing) {
-      await this.updateLastPlayed(db, gameName);
-      return {
-        url: `/game/${gameName}/index.html`,
-        fromCache: true
-      };
+      await this.updateLastPlayed(gmName);
+      return { url: `/game/${gmName}/index.html`, cached: true };
     }
 
-    const files = await this.extractZip(gameUrl);
-    await this.saveGame(db, gameName, files);
-    return {
-      url: `/game/${gameName}/index.html`,
-      fromCache: false
-    };
+    if (onDownload) onDownload(true);
+    const files = await this.extractZip(url);
+    await this.saveGm(gmName, files);
+    if (onDownload) onDownload(false);
+    
+    return { url: `/game/${gmName}/index.html`, cached: false };
   }
 }
 
