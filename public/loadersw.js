@@ -22,44 +22,47 @@ async function getGms(gameId) {
   });
 }
 
-function getmime(fname) {
-  const ext = fname.split('.').pop().toLowerCase();
-  const types = {
-    'html': 'text/html', 'htm': 'text/html', 'css': 'text/css',
-    'js': 'application/javascript', 'json': 'application/json',
-    'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
-    'gif': 'image/gif', 'svg': 'image/svg+xml', 'ico': 'image/x-icon',
-    'woff': 'font/woff', 'woff2': 'font/woff2', 'ttf': 'font/ttf',
-    'mp3': 'audio/mpeg', 'mp4': 'video/mp4', 'ogg': 'audio/ogg',
-    'wasm': 'application/wasm',
-    'data': 'application/octet-stream',
-    'unityweb': 'application/octet-stream',
-    'bundle': 'application/octet-stream',
-    'bin': 'application/octet-stream',
-    'dat': 'application/octet-stream'
-  };
-  return types[ext] || 'application/octet-stream';
-}
-
-function isBin(fname) {
-  return /\.(png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|mp3|mp4|ogg|webm|wasm|data|unityweb|bundle|bin|dat)$/i.test(fname);
-}
-
 function b64tooBlob(base64, mimeType) {
-  const bytes = atob(base64);
-  const arr = new Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) {
-    arr[i] = bytes.charCodeAt(i);
+  const byteString = atob(base64);
+  const arrayBuffer = new ArrayBuffer(byteString.length);
+  const uint8Array = new Uint8Array(arrayBuffer);
+  for (let i = 0; i < byteString.length; i++) {
+    uint8Array[i] = byteString.charCodeAt(i);
   }
-  return new Blob([new Uint8Array(arr)], { type: mimeType });
+  return new Blob([uint8Array], { type: mimeType });
+}
+
+function findFile(files, requestedPath) {
+  if (files[requestedPath]) {
+    return { data: files[requestedPath], path: requestedPath };
+  }
+  
+  const nmalReq = requestedPath.replace(/^\/+/, '');
+  
+  for (const path in files) {
+    const nmalPath = path.replace(/^\/+/, '');
+    if (nmalPath === nmalReq) {
+      return { data: files[path], path: path };
+    }
+  }
+  
+  for (const path in files) {
+    if (path.endsWith('/' + requestedPath) || path.endsWith('/' + nmalReq)) {
+      return { data: files[path], path: path };
+    }
+  }
+  
+  return null;
 }
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  const gameMatch = url.pathname.match(/^\/game\/([^\/]+)\/(.+)$/);
-  if (gameMatch) {
-    const gameId = gameMatch[1];
-    const filePath = gameMatch[2];
+  const match = url.pathname.match(/^\/game\/([^\/]+)\/(.+)$/);
+  
+  if (match) {
+    const gameId = match[1];
+    const filePath = match[2];
+    
     event.respondWith(
       (async () => {
         try {
@@ -67,35 +70,45 @@ self.addEventListener('fetch', (event) => {
           if (!gameData || !gameData.files) {
             return new Response('game not found', { status: 404 });
           }
-          let fileContent = null;
-          let foundPath = null;
-          if (gameData.files[filePath]) {
-            fileContent = gameData.files[filePath];
-            foundPath = filePath;
+          
+          const found = findFile(gameData.files, filePath);
+          if (!found) {
+            return new Response('couldnt fine file: ' + filePath, { status: 404 });
+          }
+          
+          const fileData = found.data;
+          let content, mimeType, isBinary;
+          
+          if (typeof fileData === 'object' && fileData.content !== undefined) {
+            content = fileData.content;
+            mimeType = fileData.mime || fileData.mimeType || 'application/octet-stream';
+            isBinary = fileData.binary !== undefined ? fileData.binary : fileData.isBinary;
           } else {
-            for (const path in gameData.files) {
-              if (path.endsWith('/' + filePath) || path === filePath) {
-                fileContent = gameData.files[path];
-                foundPath = path;
-                break;
-              }
-            }
+            content = fileData;
+            const ext = found.path.split('.').pop().toLowerCase();
+            const fallbackMimes = {
+              html: 'text/html', css: 'text/css', js: 'application/javascript',
+              json: 'application/json', png: 'image/png', jpg: 'image/jpeg',
+              gif: 'image/gif', svg: 'image/svg+xml', woff: 'font/woff',
+              woff2: 'font/woff2', ttf: 'font/ttf', wasm: 'application/wasm'
+            };
+            mimeType = fallbackMimes[ext] || 'application/octet-stream';
+            const textExts = new Set(['html', 'htm', 'css', 'js', 'mjs', 'json', 'xml', 'txt', 'md', 'csv', 'svg']);
+            isBinary = !textExts.has(ext);
           }
-          if (!fileContent) {
-            return new Response('file not found: ' + filePath, { status: 404 });
-          }
-          const mimeType = getmime(foundPath);
-          let response;
-          if (isBin(foundPath)) {
-            const blob = b64tooBlob(fileContent, mimeType);
-            response = new Response(blob, { headers: { 'Content-Type': mimeType } });
-          } else {
-            response = new Response(fileContent, { headers: { 'Content-Type': mimeType } });
-          }
-          return response;
+          
+          const headers = {
+            'Content-Type': mimeType + (isBinary ? '' : '; charset=utf-8'),
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'public, max-age=31536000',
+          };
+          
+          const resBody = isBinary ? b64tooBlob(content, mimeType) : content;
+          return new Response(resBody, { headers });
+          
         } catch (error) {
-          console.error(error);
-          return new Response('error: ' + error.message, { status: 500 });
+          console.error('service worker', error);
+          return new Response('err: ' + error.message, { status: 500 });
         }
       })()
     );
