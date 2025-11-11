@@ -109,21 +109,62 @@ const Loader = ({ theme, app }) => {
     });
   };
 
+  const getmime = (filename) => {
+    const ext = filename.split('.').pop().toLowerCase();
+    const types = {
+      html: 'text/html',
+      htm: 'text/html',
+      css: 'text/css',
+      js: 'application/javascript',
+      mjs: 'application/javascript',
+      json: 'application/json',
+      xml: 'application/xml',
+      txt: 'text/plain',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      gif: 'image/gif',
+      svg: 'image/svg+xml',
+      ico: 'image/x-icon',
+      webp: 'image/webp',
+      woff: 'font/woff',
+      woff2: 'font/woff2',
+      ttf: 'font/ttf',
+      otf: 'font/otf',
+      eot: 'application/vnd.ms-fontobject',
+      mp3: 'audio/mpeg',
+      wav: 'audio/wav',
+      ogg: 'audio/ogg',
+      mp4: 'video/mp4',
+      webm: 'video/webm',
+      wasm: 'application/wasm',
+      data: 'application/octet-stream',
+      unityweb: 'application/octet-stream',
+      bundle: 'application/octet-stream',
+      bin: 'application/octet-stream',
+      dat: 'application/octet-stream',
+      mem: 'application/octet-stream',
+    };
+    return types[ext] || 'application/octet-stream';
+  };
+
   const extractZip = async (zipUrl) => {
     const response = await fetch(zipUrl);
     const blob = await response.blob();
     const zip = new JSZip();
     const contents = await zip.loadAsync(blob);
     const files = {};
+    const binaryRegex = /\.(png|jpg|jpeg|gif|ico|webp|woff|woff2|ttf|otf|eot|mp3|mp4|ogg|wav|webm|wasm|data|unityweb|bundle|bin|dat|mem)$/i;
     //jsizp checking
     for (const [path, zipEntry] of Object.entries(contents.files)) {
       if (!zipEntry.dir) {
-        const isBinary = /\.(png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|mp3|mp4|ogg|webm|wasm|data|unityweb|bundle|bin|dat)$/i.test(path);
-        if (isBinary) {
-          files[path] = await zipEntry.async('base64');
-        } else {
-          files[path] = await zipEntry.async('string');
-        }
+        const isBinary = binaryRegex.test(path);
+        const content = await zipEntry.async(isBinary ? 'base64' : 'string');
+        files[path] = {
+          content: content,
+          mimeType: getmime(path),
+          isBinary: isBinary,
+        };
       }
     }
     return files;
