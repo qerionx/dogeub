@@ -123,7 +123,7 @@ const Loader = ({ theme, app }) => {
     //jsizp checking
     for (const [path, zipEntry] of Object.entries(contents.files)) {
       if (!zipEntry.dir) {
-        const isBinary = /\.(png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|mp3|mp4|ogg|webm)$/i.test(path);
+        const isBinary = /\.(png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|mp3|mp4|ogg|webm|wasm|data|unityweb|bundle|bin|dat)$/i.test(path);
         if (isBinary) {
           files[path] = await zipEntry.async('base64');
         } else {

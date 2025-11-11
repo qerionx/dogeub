@@ -30,16 +30,22 @@ function getmime(fname) {
     'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
     'gif': 'image/gif', 'svg': 'image/svg+xml', 'ico': 'image/x-icon',
     'woff': 'font/woff', 'woff2': 'font/woff2', 'ttf': 'font/ttf',
-    'mp3': 'audio/mpeg', 'mp4': 'video/mp4', 'ogg': 'audio/ogg'
+    'mp3': 'audio/mpeg', 'mp4': 'video/mp4', 'ogg': 'audio/ogg',
+    'wasm': 'application/wasm',
+    'data': 'application/octet-stream',
+    'unityweb': 'application/octet-stream',
+    'bundle': 'application/octet-stream',
+    'bin': 'application/octet-stream',
+    'dat': 'application/octet-stream'
   };
   return types[ext] || 'application/octet-stream';
 }
 
 function isBin(fname) {
-  return /\.(png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|mp3|mp4|ogg|webm)$/i.test(fname);
+  return /\.(png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|mp3|mp4|ogg|webm|wasm|data|unityweb|bundle|bin|dat)$/i.test(fname);
 }
 
-function base64ToBlob(base64, mimeType) {
+function b64tooBlob(base64, mimeType) {
   const bytes = atob(base64);
   const arr = new Array(bytes.length);
   for (let i = 0; i < bytes.length; i++) {
@@ -81,7 +87,7 @@ self.addEventListener('fetch', (event) => {
           const mimeType = getmime(foundPath);
           let response;
           if (isBin(foundPath)) {
-            const blob = base64ToBlob(fileContent, mimeType);
+            const blob = b64tooBlob(fileContent, mimeType);
             response = new Response(blob, { headers: { 'Content-Type': mimeType } });
           } else {
             response = new Response(fileContent, { headers: { 'Content-Type': mimeType } });

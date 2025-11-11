@@ -630,9 +630,9 @@
         "appName": "Retro Bowl",
         "desc": "Sport apps",
         "icon": "/assets/img/retro.webp",
-        "url": "retroBowl()",
-        "disabled": true,
-        "local": false
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/browl-lib.zip",
+        "disabled": false,
+        "local": true
       },
       {
         "appName": "Soccer Random",
@@ -1678,9 +1678,9 @@
         "appName": "Drive Mad",
         "desc": "Car/Racing apps",
         "icon": "/assets/img/drive-mad.webp",
-        "url": "https://drivemad.me/iframe/index.html",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/drm-js.zip",
         "disabled": false,
-        "local": false
+        "local": true
       },
       {
         "appName": "Eggy Car",
@@ -3416,9 +3416,9 @@
         "appName": "BasketBros.io",
         "desc": "Sport apps",
         "icon": "/assets/img/basketbros.webp",
-        "url": "https://basketbros.io",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/bbo-js.zip",
         "disabled": false,
-        "local": false
+        "local": true
       },
       {
         "appName": "Geometry Dash Lite",
