@@ -18,11 +18,6 @@ const Loader = ({ theme, app }) => {
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    const query = sessionStorage.getItem('query');
-    if (!query) window.location.href = '/docs';
-  }, []);
-
-  useEffect(() => {
     if (app?.local && app?.url) {
       loadGm();
     }

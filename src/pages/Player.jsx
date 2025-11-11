@@ -1,12 +1,19 @@
 import Nav from '../layouts/Nav';
 import Breadcrumb from '../components/player/Breadcrumb';
 import Loader from '../components/player/Loader';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import { useOptions } from '/src/utils/optionsContext';
 
 const Player = () => {
-  const { state: { app } = {} } = useLocation();
+  const location = useLocation();
+  //state could be null, destructuring not a good idea
+  const app = location.state?.app;
   const { options } = useOptions();
+
+  //handling when directly nav to /docs/r/
+  if (!app) {
+    return <Navigate to="/docs" replace />;
+  }
 
   return (
     <>

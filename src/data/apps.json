@@ -190,20 +190,28 @@
         "local": false
       },
       {
-        "appName": "Tiny Fishing",
-        "desc": "All-Time favorites",
-        "icon": "https://cdn.jsdelivr.net/gh/Skoolgq/Polaris-Assets/tiny-fishing/thumb.png",
-        "url": "https://raw.githack.com/Skoolgq/Polaris-Assets/main/tiny-fishing/index.html",
-        "disabled": false,
-        "local": false
-      },
-      {
         "appName": "Neal.fun",
         "desc": "All-Time favorites",
         "icon": "/assets/img/nf.webp",
         "url": "https://neal.fun",
         "disabled": false,
         "local": false
+      },
+      {
+        "appName": "Retro Bowl",
+        "desc": "Sport apps",
+        "icon": "/assets/img/retro.webp",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/browl-lib.zip",
+        "disabled": false,
+        "local": true
+      },
+      {
+        "appName": "BasketBros.io",
+        "desc": "Sport apps",
+        "icon": "/assets/img/basketbros.webp",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/bbo-js.zip",
+        "disabled": false,
+        "local": true
       }
     ],
     "Action": [
@@ -570,14 +578,6 @@
         "local": false
       },
       {
-        "appName": "Basket Bros",
-        "desc": "Sport apps",
-        "icon": "https://cdn.jsdelivr.net/gh/Skoolgq/Polaris-Assets/images/basketbros.jpg",
-        "url": "https:https://dogeub-assets.ftp.sh/basketbros-io/index.html",
-        "disabled": false,
-        "local": false
-      },
-      {
         "appName": "Basket Random",
         "desc": "Sport apps",
         "icon": "/assets/img/basketrandom.webp",
@@ -632,14 +632,6 @@
         "url": "https://www.mathplayground.com/penalty-kicks/index.html",
         "disabled": false,
         "local": false
-      },
-      {
-        "appName": "Retro Bowl",
-        "desc": "Sport apps",
-        "icon": "/assets/img/retro.webp",
-        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/browl-lib.zip",
-        "disabled": false,
-        "local": true
       },
       {
         "appName": "Soccer Random",
@@ -2848,6 +2840,14 @@
         "local": false
       },
       {
+        "appName": "Tiny Fishing",
+        "desc": "All-Time favorites",
+        "icon": "https://cdn.jsdelivr.net/gh/Skoolgq/Polaris-Assets/tiny-fishing/thumb.png",
+        "url": "https://raw.githack.com/Skoolgq/Polaris-Assets/main/tiny-fishing/index.html",
+        "disabled": false,
+        "local": false
+      },
+      {
         "appName": "100ng",
         "desc": "Sandbox/Arcade apps",
         "icon": "/assets-fb/100ng/100ng-logo.png",
@@ -3418,14 +3418,6 @@
         "url": "https://classroom6x.gitlab.io/aquaparkio/",
         "disabled": false,
         "local": false
-      },
-      {
-        "appName": "BasketBros.io",
-        "desc": "Sport apps",
-        "icon": "/assets/img/basketbros.webp",
-        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/bbo-js.zip",
-        "disabled": false,
-        "local": true
       },
       {
         "appName": "Geometry Dash Lite",
