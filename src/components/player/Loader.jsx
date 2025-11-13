@@ -44,7 +44,7 @@ const Loader = ({ theme, app }) => {
     >
       <div className="p-2 pl-1 border-b flex gap-2 items-center">
         <InfoCard app={app} theme={theme} />
-        <Tooltip title={isLocal ? "Fetched locally" : "Fetched from the web"} arrow placement="top">
+        <Tooltip title={isLocal ? "Fetched locally" : "Fetched from web"} arrow placement="top">
           <div className="flex items-center ml-auto mr-5">
             {isLocal ? <HardDrive size={18} className="opacity-80" /> : <Cloud size={18} className="opacity-80" />}
           </div>
