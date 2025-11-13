@@ -227,9 +227,9 @@
         "appName": "Awesome Tanks 2",
         "desc": "Fun Action",
         "icon": "/assets/img/atanks2.webp",
-        "url": "https://derpman.codeberg.page/awesometanks2/",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/atnk-v2.zip",
         "disabled": false,
-        "local": false
+        "local": true
       },
       {
         "appName": "Bounce Back",
@@ -588,10 +588,10 @@
       {
         "appName": "Basketball FRVR",
         "desc": "Sport apps",
-        "icon": "https://img.poki.com/cdn-cgi/image/quality=78,width=600,height=600,fit=cover,f=auto/5aae527bebe68094c3d3276387150197.png",
-        "url": "https://3997788263113448673.playables.usercontent.goog/v/assets/index.html#origin=https%3A%2F%2Fwww.youtube.com",
+        "icon": "https://play-lh.googleusercontent.com/4avPP7yNU6hARlzIldyPajBnKYj3rGohlmfnRtR7JxSGXNbfBW9AblVhY3wAbo0sbYU7=w240-h480-rw",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/bfrvr-lib.zip",
         "disabled": false,
-        "local": false
+        "local": true
       },
       {
         "appName": "Basketball Stars",
@@ -613,9 +613,9 @@
         "appName": "Champion Island",
         "desc": "Sport apps",
         "icon": "/assets-fb/champion-island/splash.png",
-        "url": "https://dogeub-assets.ftp.sh/champion-island/index.html",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/chp-island-arch.zip",
         "disabled": false,
-        "local": false
+        "local": true
       },
       {
         "appName": "Let's Surf",
@@ -1315,9 +1315,9 @@
         "appName": "Backrooms",
         "desc": "Running apps",
         "icon": "https://cdn.jsdelivr.net/gh/Skoolgq/Polaris-Assets/images/backrooms.jpg",
-        "url": "https://dogeub-assets.ftp.sh/backrooms/index.html",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/brm-v1.zip",
         "disabled": false,
-        "local": false
+        "local": true
       },
       {
         "appName": "Chrome Dino",
@@ -1669,9 +1669,9 @@
         "appName": "Drift Hunters",
         "desc": "Car/Racing apps",
         "icon": "/assets/img/drifthunters.webp",
-        "url": "https://webglmath.github.io/drift-hunters/index.html",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/drif-v1.zip",
         "disabled": false,
-        "local": false
+        "local": true
       },
       {
         "appName": "Drive Mad",
@@ -2417,9 +2417,9 @@
         "appName": "Cookie Clicker",
         "desc": "Idle/Clicking apps",
         "icon": "/assets/img/cookieclicker.webp",
-        "url": "https://orteil.dashnet.org/cookieclicker",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/cc-ajax.zip",
         "disabled": false,
-        "local": false
+        "local": true
       },
       {
         "appName": "DogeMiner",
