@@ -159,7 +159,6 @@ const Games = memo(() => {
   const navApp = useCallback(
     (app) => {
       if (!app) return;
-      sessionStorage.setItem('query', app.url);
       nav('/docs/r/', { state: { app } });
     },
     [nav],

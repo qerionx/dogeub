@@ -23,6 +23,7 @@
     "@mercuryworkshop/scramjet": "https://github.com/qerionx/scramjetk/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz",
     "@mercuryworkshop/wisp-js": "^0.3.3",
     "@mui/material": "^7.3.1",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@titaniumnetwork-dev/ultraviolet": "3.2.7",
     "@tomphttp/bare-server-node": "^2.0.5",
     "basecoat-css": "^0.3.1",
@@ -40,7 +41,8 @@
     "react-dom": "^19.1.0",
     "react-ga4": "^2.1.0",
     "react-router-dom": "^7.7.1",
-    "vite-plugin-static-copy": "^3.1.2"
+    "vite-plugin-static-copy": "^3.1.2",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

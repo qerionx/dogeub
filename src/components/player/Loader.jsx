@@ -1,13 +1,16 @@
 import { useRef, useState, useCallback, useMemo } from 'react';
-import Control from './Controls';
+import NewLoader from '/src/pages/NewLoader';
 import { Maximize2, SquareArrowOutUpRight, ZoomIn, ZoomOut, Cloud, HardDrive } from 'lucide-react';
+import { useLocalGmLoader } from '/src/utils/hooks/player/useLocalGmLoader';
+import { useNavigate } from 'react-router-dom';
+import Control from './Controls';
 import InfoCard from './InfoCard';
 import theming from '/src/styles/theming.module.css';
 import clsx from 'clsx';
-import { useLocalGmLoader } from '/src/utils/useLocalGmLoader';
 import Tooltip from '@mui/material/Tooltip';
 
 const Loader = ({ theme, app }) => {
+  const nav = useNavigate();
   const gmRef = useRef(null);
   const [zoom, setZoom] = useState(1);
   const { gmUrl, loading, downloading } = useLocalGmLoader(app);
@@ -16,8 +19,11 @@ const Loader = ({ theme, app }) => {
   const fs = useCallback(() => gmRef.current?.requestFullscreen?.(), []);
 
   const external = useCallback(() => {
-    sessionStorage.setItem('query', app?.url);
-    window.open('/indev', '_blank');
+    nav("/newloader", {
+        state: {
+          url: app?.url,
+        }
+      });
   }, [app?.url]);
 
   const handleZoom = useCallback((direction) => {
@@ -28,11 +34,6 @@ const Loader = ({ theme, app }) => {
       return newZoom;
     });
   }, []);
-
-  const iframeSrc = useMemo(() => 
-    isLocal ? gmUrl : '/src/static/loader.html?ui=false',
-    [isLocal, gmUrl]
-  );
 
   return (
     <div
@@ -56,14 +57,18 @@ const Loader = ({ theme, app }) => {
           {downloading ? 'Downloading...' : 'Loading...'}
         </div>
       ) : (
-        <iframe
-          key={iframeSrc}
-          src={iframeSrc}
-          ref={gmRef}
-          onContextMenu={(e) => e.preventDefault()}
-          className="w-full flex-grow"
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock"
-        />
+        isLocal ? (
+          <iframe
+            key={gmUrl}
+            src={gmUrl}
+            ref={gmRef}
+            onContextMenu={(e) => e.preventDefault()}
+            className="w-full flex-grow"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock"
+          />
+        ) : (
+          <NewLoader url={app?.url} ui={false} />
+        )
       )}
 
       <div className="p-2.5 flex gap-2 border-t">

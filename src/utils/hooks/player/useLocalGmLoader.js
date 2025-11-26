@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import LocalGmLoader from './localGmLoader';
+import LocalGmLoader from '../../localGmLoader';
 
 export const useLocalGmLoader = (app) => {
   const [gmUrl, setGmUrl] = useState(null);

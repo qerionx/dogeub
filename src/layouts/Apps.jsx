@@ -108,8 +108,11 @@ const Apps = memo(() => {
   const navApp = useCallback(
     (app) => {
       if (!app) return;
-      sessionStorage.setItem('query', app.url);
-      nav('/indev');
+      nav("/newloader", {
+        state: {
+          url: app.url,
+        }
+      });
     },
     [nav],
   );

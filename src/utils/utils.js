@@ -119,14 +119,3 @@ export const check = (() => {
   ckOff();
   panic();
 })();
-
-export const logUtils = {
-  log: (...args) =>
-    console.log('%c[INFO]%c', 'color: #0af; font-weight: bold;', 'color: inherit;', ...args),
-
-  error: (...args) =>
-    console.error('%c[ERROR]%c', 'color: #f55; font-weight: bold;', 'color: inherit;', ...args),
-
-  warn: (...args) =>
-    console.warn('%c[WARN]%c', 'color: #fa0; font-weight: bold;', 'color: inherit;', ...args),
-};

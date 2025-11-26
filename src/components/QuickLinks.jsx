@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import LinkDialog from './NewQuickLink';
 import EditLinkDialog from './EditQuickLink';
 
-const QuickLinks = ({ cls, nav = true }) => {
+const QuickLinks = ({ cls, nav = true, navigating }) => {
   const { options, updateOption } = useOptions();
   const navigate = useNavigate();
   const [fallback, setFallback] = useState({});
@@ -31,7 +31,11 @@ const QuickLinks = ({ cls, nav = true }) => {
   });
 
   const go = (url) => {
-    nav ? (sessionStorage.setItem('query', url), navigate('/indev')) : window.parent.tabManager.navigate(url);
+    nav ? navigate("/newloader", {
+      state: {
+        url: url,
+      }
+    }) : navigating.go(navigating.id, navigating.process(url));
   };
 
   useEffect(() => {
