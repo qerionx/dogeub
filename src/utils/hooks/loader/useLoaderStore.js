@@ -14,6 +14,7 @@ const store = create((set) => ({
   ],
   frameRefs: null,
   showTabs: true,
+  iframeUrls: {},
   setShowTabs: (value) => set({ showTabs: value }),
   toggleTabs: () => set((state) => ({ showTabs: !state.showTabs })),
   setFrameRefs: (refs) => set({ frameRefs: refs }),
@@ -109,6 +110,13 @@ const store = create((set) => ({
       }),
     }));
   },
+  setIframeUrl: (tabId, url) =>
+    set((state) => ({
+      iframeUrls: {
+        ...state.iframeUrls,
+        [tabId]: url,
+      },
+    })),
 }));
 
 export default store;

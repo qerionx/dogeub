@@ -12,16 +12,12 @@ const Viewer = () => {
   const updateTitle = loaderStore((state) => state.updateTitle);
   const setLoading = loaderStore((state) => state.setLoading);
   const setFrameRefs = loaderStore((state) => state.setFrameRefs);
+  const { iframeUrls, setIframeUrl } = loaderStore();
   const frameRefs = useRef({});
   const prevURL = useRef({});
   const prevTitle = useRef({});
   const { options } = useOptions();
 
-  /*
-    below
-    attach load listeners to ALL and poll ALL iframes so loading state always updates
-    before it would only poll the Active tab/frame so nonactive tabs would show infinite loading since load event gets ignored.
-  */
   useEffect(() => {
     setFrameRefs(frameRefs);
     const tabIds = new Set(tabs.map((t) => t.id));
@@ -69,7 +65,7 @@ const Viewer = () => {
           // tab cant be loading while URL is being updated
           if (!tab.isLoading && curURL !== prevURL.current[tab.id] && curURL !== tab.url) {
             prevURL.current[tab.id] = curURL;
-            updateUrl(tab.id, curURL);
+            setIframeUrl(tab.id, curURL);
           }
           if (curTTL && curTTL !== prevTitle.current[tab.id] && curTTL !== tab.title) {
             prevTitle.current[tab.id] = curTTL;
@@ -85,7 +81,25 @@ const Viewer = () => {
       });
       clearInterval(interval);
     };
-  }, [tabs, setLoading, updateUrl, updateTitle]);
+  }, [tabs, setLoading, updateTitle, setIframeUrl]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      tabs.forEach((tab) => {
+        if (tab.url === 'tabs://new') return;
+        const iframe = frameRefs.current[tab.id];
+        if (!iframe) return;
+        try {
+          const currentUrl = iframe.contentWindow.location.href;
+          if (currentUrl !== iframeUrls[tab.id]) {
+            setIframeUrl(tab.id, currentUrl);
+          }
+        } catch (e) {}
+      });
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [tabs, iframeUrls, setIframeUrl]);
 
   const activeNewTab = tabs.find((tab) => tab.url === 'tabs://new' && tab.active);
 

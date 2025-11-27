@@ -41,6 +41,7 @@ const Omnibox = () => {
   const { options } = useOptions();
   const { state } = useLocation();
   const navigate = useNavigate();
+  const { iframeUrls } = loaderStore();
 
   const isProcied = (url) => url?.includes('/uv/service/') || url?.includes('/scramjet/');
   const isNewTab = (url) => !url || url === 'tabs://new' || url.endsWith('/new');
@@ -68,10 +69,14 @@ const Omnibox = () => {
   const [input, setInput] = useState(getDisplayUrl(activeTab?.url));
 
   useEffect(() => {
-    const url = activeTab?.url;
-    setInput(getDisplayUrl(url));
-    updateIcon(url);
-  }, [activeTab?.url]);
+    const url = iframeUrls[activeTab?.id];
+    if (activeTab?.url === 'tabs://new') {
+      setInput('');
+    } else if (url && url !== 'about:blank') {
+      setInput(getDisplayUrl(url));
+      updateIcon(url);
+    }
+  }, [iframeUrls, activeTab?.id]);
 
   useEffect(() => {
     if (state?.url && activeTab) {
@@ -100,7 +105,7 @@ const Omnibox = () => {
           className="h-full w-full outline-0 text-[0.8rem] ml-2"
           placeholder="Search with Google or enter address"
           onSelect={() => setIcon(Search)}
-          onBlur={() => updateIcon(activeTab?.url)}
+          onBlur={() => updateIcon(iframeUrls[activeTab?.id])}
           value={input}
           ref={inputRef}
           onChange={(e) => setInput(e.target.value)}

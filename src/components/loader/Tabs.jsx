@@ -13,7 +13,7 @@ const TabBar = () => {
   }, [options.showTb, setShowTabs]);
 
   return (
-    <div className={clsx("h-10 items-center overflow-hidden gap-1 px-1", showTabs ? 'flex' : 'hidden')} style={{ backgroundColor: options.tabBarColor || "#FF8000" }}>
+    <div className={clsx("h-10 items-center overflow-hidden gap-1 px-1", showTabs ? 'flex' : 'hidden')} style={{ backgroundColor: options.tabBarColor || "#070e15" }}>
       {tabs.map(({ title, id, active, isLoading, url }) => {
         const showGlobe = url === 'tabs://new' || !isLoading;
         return (
