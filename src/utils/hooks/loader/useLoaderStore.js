@@ -15,6 +15,7 @@ const store = create((set) => ({
   frameRefs: null,
   showTabs: true,
   iframeUrls: {},
+  activeFrameRef: null,
   setShowTabs: (value) => set({ showTabs: value }),
   toggleTabs: () => set((state) => ({ showTabs: !state.showTabs })),
   setFrameRefs: (refs) => set({ frameRefs: refs }),
@@ -59,7 +60,7 @@ const store = create((set) => ({
             url,
             history: newHistory,
             historyIndex: newHistory.length - 1,
-            isLoading: url !== 'tabs://new', // Set loading when URL changes
+            isLoading: url !== 'tabs://new',
           };
         }
         return { ...tab, url, isLoading: url !== 'tabs://new' };
@@ -80,20 +81,28 @@ const store = create((set) => ({
       iframe.contentWindow.location.reload();
     }
   },
-  goBack: (tabId) => {
-    set((state) => ({
-      tabs: state.tabs.map((tab) => {
+  goBack: (tabId, onNewTab) => {
+    set((state) => {
+      const updatedTabs = state.tabs.map((tab) => {
         if (tab.id !== tabId || tab.historyIndex <= 0) return tab;
 
         const newIndex = tab.historyIndex - 1;
+        const newUrl = tab.history[newIndex];
+
+        if (newUrl === 'tabs://new' && onNewTab) {
+          onNewTab();
+        }
+
         return {
           ...tab,
-          url: tab.history[newIndex],
+          url: newUrl,
           historyIndex: newIndex,
           isLoading: true,
         };
-      }),
-    }));
+      });
+
+      return { tabs: updatedTabs };
+    });
   },
   goForward: (tabId) => {
     set((state) => ({
@@ -116,6 +125,24 @@ const store = create((set) => ({
         ...state.iframeUrls,
         [tabId]: url,
       },
+    })),
+  updateActiveFrameRef: (ref) => set({ activeFrameRef: ref }),
+  clearStore: () =>
+    set(() => ({
+      tabs: [
+        {
+          title: 'New Tab',
+          id: crypto.randomUUID(),
+          url: 'tabs://new',
+          active: true,
+          history: ['tabs://new'],
+          historyIndex: 0,
+          isLoading: false,
+        },
+      ],
+      frameRefs: null,
+      showTabs: true,
+      iframeUrls: {},
     })),
 }));
 

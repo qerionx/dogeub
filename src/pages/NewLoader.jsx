@@ -7,7 +7,7 @@ import { process } from '/src/utils/hooks/loader/utils';
 import { useOptions } from '../utils/optionsContext';
 import { useEffect } from 'react';
 
-export default function Loader({ url, ui = true }) {
+export default function Loader({ url, ui = true, zoom }) {
   useReg();
   const { options } = useOptions();
   const tabs = loaderStore((state) => state.tabs);
@@ -22,6 +22,9 @@ export default function Loader({ url, ui = true }) {
       }
     }
   }, [url, tabs, updateUrl, options.prType]);
+  useEffect(() => {
+    loaderStore.getState().clearStore();
+  }, []);
 
   return (
     <div className="flex flex-col w-full h-screen">
@@ -35,7 +38,7 @@ export default function Loader({ url, ui = true }) {
         </div>
       )}
       <div className="flex-1 w-full">
-        <Viewer />
+        <Viewer zoom={zoom} />
       </div>
     </div>
   );

@@ -85,9 +85,25 @@ const Omnibox = () => {
     }
   }, [state?.url, activeTab?.id]);
 
+  useEffect(() => {
+    if (activeTab) {
+      updateIcon(activeTab.url);
+    }
+  }, [activeTab]);
+
   return (
     <div className="h-10 flex items-center overflow-hidden gap-1 px-2 border-t">
-      <Action Icon={ArrowLeft} size="17" action={() => activeTab && goBack(activeTab.id)} />
+      <Action
+        Icon={ArrowLeft}
+        size="17"
+        action={() =>
+          activeTab &&
+          goBack(activeTab.id, () => {
+            setInput('');
+          })
+        }
+      />
+      {/** ^^ callback used if going back to a new tab only */}
       <Action Icon={ArrowRight} size="17" action={() => activeTab && goForward(activeTab.id)} />
       <Action Icon={RotateCw} size="16" action={() => activeTab && refreshTab(activeTab.id)} />
       <div

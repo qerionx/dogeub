@@ -6,7 +6,7 @@ import { Loader } from 'lucide-react';
 
 import NewTab from './NewTab';
 
-const Viewer = () => {
+const Viewer = ({ zoom }) => {
   const tabs = loaderStore((state) => state.tabs);
   const updateUrl = loaderStore((state) => state.updateUrl);
   const updateTitle = loaderStore((state) => state.updateTitle);
@@ -17,6 +17,8 @@ const Viewer = () => {
   const prevURL = useRef({});
   const prevTitle = useRef({});
   const { options } = useOptions();
+  const updateActiveFrameRef = loaderStore((state) => state.updateActiveFrameRef);
+  const activeFrameRef = loaderStore((state) => state.activeFrameRef);
 
   useEffect(() => {
     setFrameRefs(frameRefs);
@@ -100,6 +102,23 @@ const Viewer = () => {
 
     return () => clearInterval(interval);
   }, [tabs, iframeUrls, setIframeUrl]);
+
+  useEffect(() => {
+    if (activeFrameRef?.current) {
+      try {
+        activeFrameRef.current.contentWindow.document.body.style.zoom = zoom;
+      } catch (e) {}
+    }
+  }, [activeFrameRef, zoom]);
+
+  useEffect(() => {
+    tabs.forEach((tab) => {
+      if (tab.active) {
+        const iframeRef = { current: frameRefs.current[tab.id] };
+        updateActiveFrameRef(iframeRef);
+      }
+    });
+  }, [tabs]);
 
   const activeNewTab = tabs.find((tab) => tab.url === 'tabs://new' && tab.active);
 
