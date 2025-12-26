@@ -26,9 +26,9 @@ export const themeConfig = [
       /* loader */
       tabColor: "#111e2fb0",
       tabOutline: "#344646",
-      barColor: "#09121e",
       tabBarColor: "#070e15",
-      omninputColor: "#06080d8f"
+      omninputColor: "#06080d8f",
+      menuColor: "#1a252f"
     },
   },
   {
@@ -58,7 +58,8 @@ export const themeConfig = [
       tabOutline: "#3e3b3b",
       barColor: "#221a1a",
       tabBarColor: "#151313",
-      omninputColor: "#1714148f"
+      omninputColor: "#1714148f",
+      menuColor: "#282323"
     },
   },
   {
@@ -88,7 +89,8 @@ export const themeConfig = [
       tabOutline: "#2d3e28",
       barColor: "#162218",
       tabBarColor: "#131513",
-      omninputColor: "#1714148f"
+      omninputColor: "#1714148f",
+      menuColor: "#1d221d"
     },
   },
   {
@@ -101,7 +103,7 @@ export const themeConfig = [
       settingsSearchBar: '#1f1f23',
       settingsPanelItemBackgroundColor: '#2e2e34',
       settingsDropdownColor: '#151519',
-      siteTextColor: '#d4d4d4',
+      siteTextColor: '#fff',
       bgDesignColor: '73, 73, 73',
       glowWrapperColor: '255, 255, 255',
       switchColor: '#1f1f23',
@@ -118,7 +120,8 @@ export const themeConfig = [
       tabOutline: "#353535",
       barColor: "#191a19",
       tabBarColor: "#0d0d0d",
-      omninputColor: "#0b0a0a8f"
+      omninputColor: "#0b0a0a8f",
+      menuColor: "#1c1c1c"
     },
   },
   {
@@ -148,7 +151,8 @@ export const themeConfig = [
       tabOutline: "#343540",
       barColor: "#14141a",
       tabBarColor: "#0e0e13",
-      omninputColor: "#0a0b0f8f"
+      omninputColor: "#0a0b0f8f",
+      menuColor: "#18151c"
     },
   },
 
@@ -179,7 +183,8 @@ export const themeConfig = [
       tabOutline: "#b2b2b2",
       barColor: "#ffffff",
       tabBarColor: "#d0d0d0",
-      omninputColor: "#c6c6c68f"
+      omninputColor: "#c6c6c68f",
+      menuColor: "#fff"
     },
   },
   {
@@ -209,7 +214,8 @@ export const themeConfig = [
       tabOutline: "#b2b2b2",
       barColor: "#ffffff",
       tabBarColor: "#d0d0d0",
-      omninputColor: "#c6c6c68f"
+      omninputColor: "#c6c6c68f",
+      menuColor: "#fff"
     },
   },
 ];

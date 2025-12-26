@@ -1,19 +1,15 @@
 import loaderStore from '/src/utils/hooks/loader/useLoaderStore';
 import { Globe, X, Plus, Loader } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useOptions } from '/src/utils/optionsContext'
 import clsx from 'clsx';
 
 const TabBar = () => {
-  const { tabs, addTab, removeTab, setActive, setLastActive, showTabs, setShowTabs } = loaderStore();
+  const { tabs, addTab, removeTab, setActive, showTabs, setLastActive, showUI } = loaderStore();
   const { options } = useOptions();
 
-  useEffect(() => {
-    setShowTabs(options.showTb ?? true);
-  }, [options.showTb, setShowTabs]);
-
   return (
-    <div className={clsx("h-10 items-center overflow-hidden gap-1 px-1", showTabs ? 'flex' : 'hidden')} style={{ backgroundColor: options.tabBarColor || "#070e15" }}>
+    <div className={clsx("h-10 items-center overflow-hidden gap-1 px-1", showTabs && showUI ? 'flex' : 'hidden')} style={{ backgroundColor: options.tabBarColor || "#070e15" }}>
       {tabs.map(({ title, id, active, isLoading, url }) => {
         const showGlobe = url === 'tabs://new' || !isLoading;
         return (

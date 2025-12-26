@@ -13,11 +13,15 @@ const store = create((set) => ({
     },
   ],
   frameRefs: null,
-  showTabs: true,
+  showTabs: false,
+  showMenu: false,
   iframeUrls: {},
   activeFrameRef: null,
+  showUI: true,
+  toggleUI: () => set((state) => ({ showUI: !state.showUI })),
   setShowTabs: (value) => set({ showTabs: value }),
   toggleTabs: () => set((state) => ({ showTabs: !state.showTabs })),
+  toggleMenu: () => set((state) => ({ showMenu: !state.showMenu })),
   setFrameRefs: (refs) => set({ frameRefs: refs }),
   addTab: (tab) =>
     set((state) => ({
@@ -127,7 +131,7 @@ const store = create((set) => ({
       },
     })),
   updateActiveFrameRef: (ref) => set({ activeFrameRef: ref }),
-  clearStore: () =>
+  clearStore: ({ showTb }) =>
     set(() => ({
       tabs: [
         {
@@ -141,7 +145,7 @@ const store = create((set) => ({
         },
       ],
       frameRefs: null,
-      showTabs: true,
+      showTabs: showTb,
       iframeUrls: {},
     })),
 }));

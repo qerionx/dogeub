@@ -22,11 +22,15 @@ const Action = ({ Icon, size = 15, action = () => alert('nothing here yet'), dis
     <button
       className={clsx(
         'flex justify-center items-center',
-        'h-6 w-7',
-        disabled ? 'cursor-not-allowed opacity-70' : 'rounded-md',
+        'h-6 w-7 rounded-md',
+        disabled ? 'cursor-not-allowed opacity-70' : '',
         options.type != 'light' ? 'hover:bg-[#fff3]' : 'hover:bg-[#97979773]',
       )}
-      onClick={!disabled ? action : undefined}
+      onClick={(e) => {
+        if (!disabled) {
+          action(e);
+        }
+      }}
     >
       <Icon size={size} />
     </button>
@@ -36,7 +40,7 @@ const Action = ({ Icon, size = 15, action = () => alert('nothing here yet'), dis
 const Omnibox = () => {
   const [Icon, setIcon] = useState(Info);
   const activeTab = loaderStore((state) => state.tabs.find((tab) => tab.active));
-  const { updateUrl, refreshTab, goBack, goForward, toggleTabs } = loaderStore();
+  const { updateUrl, refreshTab, goBack, goForward, toggleTabs, toggleMenu, showUI } = loaderStore();
   const inputRef = useRef(null);
   const { options } = useOptions();
   const { state } = useLocation();
@@ -92,7 +96,7 @@ const Omnibox = () => {
   }, [activeTab]);
 
   return (
-    <div className="h-10 flex items-center overflow-hidden gap-1 px-2 border-t">
+    <div className={clsx("h-10 flex items-center overflow-hidden gap-1 px-2 border-t", showUI ? '' : 'hidden')}>
       <Action
         Icon={ArrowLeft}
         size="17"
@@ -140,7 +144,10 @@ const Omnibox = () => {
         disabled={activeTab?.url == 'tabs://new'}
       />
       <Action Icon={Folders} size="17" action={toggleTabs} />
-      <Action Icon={Menu} size="17" />
+      <Action Icon={Menu} size="17" action={(e) => {
+        e?.stopPropagation();
+        toggleMenu();
+      }} />
     </div>
   );
 };

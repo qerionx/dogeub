@@ -12,7 +12,7 @@ const Viewer = ({ zoom }) => {
   const updateTitle = loaderStore((state) => state.updateTitle);
   const setLoading = loaderStore((state) => state.setLoading);
   const setFrameRefs = loaderStore((state) => state.setFrameRefs);
-  const { iframeUrls, setIframeUrl } = loaderStore();
+  const { iframeUrls, setIframeUrl, showMenu, toggleMenu } = loaderStore();
   const frameRefs = useRef({});
   const prevURL = useRef({});
   const prevTitle = useRef({});
@@ -148,6 +148,13 @@ const Viewer = ({ zoom }) => {
               style={{ display: 'block', width: '100%', height: '100%' }}
               className="absolute inset-0 w-full h-full transition-opacity duration-200"
             />
+            {/*transparent overlay for when click on content */}
+            {showMenu && (
+              <div 
+                className="absolute inset-0 w-full h-full z-50"
+                onClick={() => toggleMenu()}
+              />
+            )}
           </div>
         );
       })}
