@@ -31,7 +31,7 @@ const QuickLinks = ({ cls, nav = true, navigating }) => {
   });
 
   const go = (url) => {
-    nav ? navigate("/newloader", {
+    nav ? navigate("/search", {
       state: {
         url: url,
       }

@@ -34,7 +34,15 @@ const Viewer = ({ zoom }) => {
       if (tab.url === 'tabs://new') return;
       const iframe = frameRefs.current[tab.id];
       if (!iframe) return;
-      const handleLoad = () => setLoading(tab.id, false);
+      const handleLoad = () => {
+        setLoading(tab.id, false);
+        try {
+          const d = iframe.contentWindow?.document;
+          if (d?.getElementById('errorTrace-wrapper')) {
+            iframe.contentWindow.location.replace(tab.url);
+          }
+        } catch {}
+      };
       const checkState = () => {
         try {
           const curURL = iframe.contentWindow.location.href;

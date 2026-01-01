@@ -38,7 +38,7 @@ const SearchContainer = memo(function SearchContainer({ logo = true, cls, nav = 
 
   const go = (strin) => {
     if (nav) {
-      navigate("/newloader", {
+      navigate("/search", {
         state: {
           url: strin,
         }

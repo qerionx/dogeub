@@ -108,7 +108,7 @@ const Apps = memo(() => {
   const navApp = useCallback(
     (app) => {
       if (!app) return;
-      nav("/newloader", {
+      nav("/search", {
         state: {
           url: app.url,
         }

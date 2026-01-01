@@ -250,7 +250,7 @@ const Games = memo(() => {
 
       {showDl && (
         <div className="text-center text-xs opacity-60 pb-2">
-          Games not played for 3+ days are automatically removed
+          Local games not played for 3+ days are automatically removed
         </div>
       )}
 

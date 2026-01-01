@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from 'react';
-import NewLoader from '/src/pages/NewLoader';
+import Search from '/src/pages/search';
 import { Maximize2, SquareArrowOutUpRight, ZoomIn, ZoomOut, Cloud, HardDrive } from 'lucide-react';
 import { useLocalGmLoader } from '/src/utils/hooks/player/useLocalGmLoader';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +29,7 @@ const Loader = ({ theme, app }) => {
   }, [activeFrameRef]);
 
   const external = useCallback(() => {
-    nav('/newloader', {
+    nav('/search', {
       state: {
         url: app?.url,
       },
@@ -54,7 +54,7 @@ const Loader = ({ theme, app }) => {
     >
       <div className="p-2 pl-1 border-b flex gap-2 items-center">
         <InfoCard app={app} theme={theme} />
-        <Tooltip title={isLocal ? 'Fetched locally' : 'Fetched from web'} arrow placement="top">
+        <Tooltip title={isLocal ? 'Downloaded to device (local)' : 'Fetched from web'} arrow placement="top">
           <div className="flex items-center ml-auto mr-5">
             {isLocal ? (
               <HardDrive size={18} className="opacity-80" />
@@ -79,7 +79,7 @@ const Loader = ({ theme, app }) => {
           sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock"
         />
       ) : (
-        <NewLoader url={app?.url} ui={false} zoom={zoom} />
+        <Search url={app?.url} ui={false} zoom={zoom} />
       )}
 
       <div className="p-2.5 flex gap-2 border-t">
