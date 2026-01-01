@@ -6,7 +6,6 @@ import { useOptions } from '/src/utils/optionsContext';
 
 const Player = () => {
   const location = useLocation();
-  //state could be null, destructuring not a good idea
   const app = location.state?.app;
   const { options } = useOptions();
 

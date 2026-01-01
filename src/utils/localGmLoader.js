@@ -96,6 +96,14 @@ class LocalGmLoader {
     });
   }
 
+  async getAllGms() {
+    return this.dbAction('readonly', (store, resolve, reject) => {
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
   isBinary(filename) {
     const ext = filename.split('.').pop().toLowerCase();
     return !TEXT_EXTS.has(ext);

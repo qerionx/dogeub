@@ -63,6 +63,17 @@ const check = (inp) => {
 };
 
 import whitelist from '/src/data/whitelist.json';
+import appsData from '/src/data/apps.json';
+
+const scrwlist = new Set([
+  ...whitelist,
+  ...Object.values(appsData.games || {}).flatMap(cat => 
+    cat.filter(g => g.url && !g.local).map(g => {
+      try { return new URL(g.url.startsWith('http') ? g.url : `https://${g.url}`).hostname.replace(/^www\./, ''); }
+      catch { return null; }
+    }).filter(Boolean)
+  )
+]);
 
 export const process = (input, decode = false, prType) => {
   let prefix;
@@ -75,7 +86,8 @@ export const process = (input, decode = false, prType) => {
       prefix = '/scramjet/';
       break;
     default:
-      const match = whitelist.some((domain) => check(input).includes(domain));
+      const url = check(input);
+      const match = [...scrwlist].some(d => url.includes(d));
       prefix = match ? '/scramjet/' : '/uv/service/';
   }
 

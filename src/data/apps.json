@@ -291,9 +291,9 @@
         "appName": "Rooftop Snipers",
         "desc": "Fun Action",
         "icon": "https://img.poki.com/cdn-cgi/image/quality=78,width=600,height=600,fit=cover,f=auto/c127771edb0e821e4109b7058ae3f094.jpeg",
-        "url": "https://dogeub-assets.ftp.sh/rooftop-snipers/index.html",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/templatedata-roof.zip",
         "disabled": false,
-        "local": false
+        "local": true
       },
       {
         "appName": "Station 141",
@@ -637,9 +637,9 @@
         "appName": "Soccer Random",
         "desc": "Sport apps",
         "icon": "https://img.gamedistribution.com/308d826f20034d7b972f25258c8d0a44-512x512.jpeg",
-        "url": "https://html5.gamedistribution.com/rvvASMiM/308d826f20034d7b972f25258c8d0a44/?gd_sdk_referrer_url=https://gamedistribution.com/games/soccer-random",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/scruntime.zip",
         "disabled": false,
-        "local": false
+        "local": true
       },
       {
         "appName": "Soccer Skills",
@@ -653,15 +653,15 @@
         "appName": "Volley Random",
         "desc": "Sport apps",
         "icon": "/assets/img/volley-random.webp",
-        "url": "https://files.twoplayergames.org/files/games/o1/Volley_random/index.html",
+        "url": "https://cdn.jsdelivr.net/gh/rewz099/js-lib-cdn/vlruntime.zip",
         "disabled": false,
-        "local": false
+        "local": true
       },
       {
         "appName": "Boxing Random",
         "desc": "Sport apps",
         "icon": "/assets-fb/boxing-random/512x340.jpg",
-        "url": "https://dogeub-assets.ftp.sh/boxing-random/index.html",
+        "url": "https://html5.gamedistribution.com/e8c02771085e4c8b9de3deda5e087e0e/?gd_sdk_referrer_url=https%3A%2F%2Fwww.twoplayergames.org%2Fgame%2Fboxing-random",
         "disabled": false,
         "local": false
       },

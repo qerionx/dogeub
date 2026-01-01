@@ -55,7 +55,7 @@ const CategoryRow = memo(({ category, games, onClick, onViewMore, fallback, onIm
   };
 
   return (
-    <div className="mb-3 max-w-7xl mx-auto px-6">
+    <div className="mb-3 max-w-7xl mx-auto px-9">
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold">{category}</h2>
@@ -121,6 +121,18 @@ const Games = memo(() => {
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState(null);
   const [fallback, setFallback] = useState({});
+  const [dlCount, setDlCount] = useState(0);
+  const [showDl, setShowDl] = useState(false);
+  const [dlGames, setDlGames] = useState([]);
+
+  useEffect(() => {
+    import('../utils/localGmLoader').then(async (m) => {
+      const loader = new m.default();
+      const gms = await loader.getAllGms();
+      setDlCount(gms.length);
+      setDlGames(gms);
+    }).catch(() => {});
+  }, []);
 
   const perPage = options.itemsPerPage || 20;
 
@@ -135,7 +147,13 @@ const Games = memo(() => {
   const filtered = useMemo(() => {
     let toFilter = all;
     
-    if (category) {
+    if (showDl) {
+      const dlNames = new Set(dlGames.map(g => g.name));
+      toFilter = all.filter(game => {
+        const gmName = game.url?.split('/').pop()?.replace('.zip', '');
+        return gmName && dlNames.has(gmName);
+      });
+    } else if (category) {
       toFilter = data[category] || [];
     }
     
@@ -150,7 +168,7 @@ const Games = memo(() => {
     const total = Math.ceil(toFilter.length / perPage);
     const paged = toFilter.slice((page - 1) * perPage, page * perPage);
     return { filteredGames: toFilter, paged, totalPages: total };
-  }, [all, data, category, q, page, perPage]);
+  }, [all, data, category, showDl, dlGames, q, page, perPage]);
 
   useEffect(() => {
     if (page > filtered.totalPages && filtered.totalPages > 0) setPage(1);
@@ -178,6 +196,14 @@ const Games = memo(() => {
 
   const handleBack = useCallback(() => {
     setCategory(null);
+    setShowDl(false);
+    setQ('');
+    setPage(1);
+  }, []);
+
+  const handleViewDl = useCallback(() => {
+    setShowDl(true);
+    setCategory(null);
     setQ('');
     setPage(1);
   }, []);
@@ -197,10 +223,10 @@ const Games = memo(() => {
   return (
     <div className={`${styles.appContainer} w-full mx-auto`}>
       <div className="w-full px-4 py-4 flex justify-center mt-3 relative">
-        {category && (
+        {(category || showDl) && (
           <button
             onClick={handleBack}
-            className="absolute left-10 text-sm hover:opacity-80 transition-opacity whitespace-nowrap"
+            className="absolute cursor-pointer left-10 text-sm hover:opacity-80 transition-opacity whitespace-nowrap"
           >
             ← Back to all
           </button>
@@ -222,7 +248,24 @@ const Games = memo(() => {
         </div>
       </div>
 
-      {q || category ? (
+      {showDl && (
+        <div className="text-center text-xs opacity-60 pb-2">
+          Games not played for 3+ days are automatically removed
+        </div>
+      )}
+
+      {!category && !showDl && dlCount > 0 && (
+        <div className="w-full flex justify-center pb-1">
+          <button
+            onClick={handleViewDl}
+            className="cursor-pointer text-xs hover:opacity-80 transition-opacity whitespace-nowrap"
+          >
+            View Downloaded Games ({dlCount})
+          </button>
+        </div>
+      )}
+
+      {q || category || showDl ? (
         <>
           <div className="flex flex-wrap justify-center pb-2">
             {filtered.paged.map((game) => (
