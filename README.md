@@ -20,7 +20,7 @@
 
 ## Overview
 
-DogeUB is a web proxy frontend and internet browsing hub, allowing you to surf the web anonymously while providing a full suite of apps and games, built with [React](https://github.com/facebook/react).
+DogeUB is a web proxy frontend / internet browsing hub, allowing you to surf the web anonymously while providing a full suite of apps and games, built with [React](https://github.com/facebook/react).
 
 > [!IMPORTANT]
 > Please consider starring our repository if you are forking it!
@@ -30,7 +30,7 @@ DogeUB is a web proxy frontend and internet browsing hub, allowing you to surf t
 | Feature | Implemented |
 |---------|-------------|
 | Web Proxy | Yes |
-| Browser UI | Yes |
+| Browser-like UI | Yes |
 | App player UI | Yes |
 | Cloak features | Partially |
 | Game Downloader | Yes |
@@ -65,7 +65,7 @@ npm run dev
 ---
 
 
-## Contributors / Developers
+### Contributors / Developers
 
 | Name          | Role               | GitHub |
 | ------------- | ------------------ | ------ |
