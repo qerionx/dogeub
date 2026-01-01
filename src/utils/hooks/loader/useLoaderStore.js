@@ -87,7 +87,7 @@ const store = create((set) => ({
   },
   goBack: (tabId, onNewTab) => {
     set((state) => {
-      const updatedTabs = state.tabs.map((tab) => {
+      const updatedTbs = state.tabs.map((tab) => {
         if (tab.id !== tabId || tab.historyIndex <= 0) return tab;
 
         const newIndex = tab.historyIndex - 1;
@@ -105,12 +105,15 @@ const store = create((set) => ({
         };
       });
 
-      return { tabs: updatedTabs };
+      const tab = updatedTbs.find((t) => t.id === tabId);
+      const newIframeUrls = tab ? { ...state.iframeUrls, [tabId]: tab.url } : state.iframeUrls;
+
+      return { tabs: updatedTbs, iframeUrls: newIframeUrls };
     });
   },
   goForward: (tabId) => {
-    set((state) => ({
-      tabs: state.tabs.map((tab) => {
+    set((state) => {
+      const updatedTbs = state.tabs.map((tab) => {
         if (tab.id !== tabId || tab.historyIndex >= tab.history.length - 1) return tab;
 
         const newIndex = tab.historyIndex + 1;
@@ -120,8 +123,13 @@ const store = create((set) => ({
           historyIndex: newIndex,
           isLoading: true,
         };
-      }),
-    }));
+      });
+
+      const tab = updatedTbs.find((t) => t.id === tabId);
+      const newIframeUrls = tab ? { ...state.iframeUrls, [tabId]: tab.url } : state.iframeUrls;
+
+      return { tabs: updatedTbs, iframeUrls: newIframeUrls };
+    });
   },
   setIframeUrl: (tabId, url) =>
     set((state) => ({
