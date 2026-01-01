@@ -20,32 +20,40 @@
 
 ## Overview
 
-DogeUB is a modern web proxy frontend and internet browsing hub, allowing you to browse the web anonymously while providing a full suite of apps and games, built with [React](https://github.com/facebook/react).
+DogeUB is a web proxy frontend and internet browsing hub, allowing you to surf the web anonymously while providing a full suite of apps and games, built with [React](https://github.com/facebook/react).
 
 > [!IMPORTANT]
 > Please consider starring our repository if you are forking it!
 
-### Features:
+### List of features:
 
-- **Performance:** Fast, lightweight, and highly responsive.
-- **Tabs:** Browse multiple sites with ease, providing an experience similar to a web browser!
-- **Customization:** Multiple themes, extensive settings, and user-tailored experience.
+| Feature | Implemented |
+|---------|-------------|
+| Web Proxy | Yes |
+| Browser UI | Yes |
+| App player UI | Yes |
+| Cloak features | Partially |
+| Game Downloader | Yes |
+| Quick Links | Yes |
+| DuckDuckGo Search API | Yes |
+| Apps & Games | Yes |
+| Search Engine Switcher | Yes |
+| Themes/Site Customization | Yes |
 
 ---
 
-## Development & Building
+### Development & Building
 
-
-### Production:
+#### Production:
 ```bash
 git clone https://github.com/DogeNetwork/dogeub.git
 cd dogeub
 npm i
 npm run build
 node server.js
-````
+```
 
-### Development:
+#### Development:
 
 ```bash
 git clone https://github.com/DogeNetwork/dogeub.git
@@ -78,6 +86,7 @@ npm run dev
 * [MercuryWorkshop/scramjet](https://github.com/MercuryWorkshop/scramjet)
 * [titaniumnetwork-dev/Ultraviolet](https://github.com/titaniumnetwork-dev/Ultraviolet)
 * [lucide-icons/lucide](https://github.com/lucide-icons/lucide)
+* [Stuk/jszip](https://github.com/Stuk/jszip)
 
 ## License
 
