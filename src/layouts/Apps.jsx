@@ -15,34 +15,42 @@ const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest' },
 ];
 
-const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemStyles }) => (
-  <div
-    key={app.appName}
-    className={clsx(
-      itemStyles.app,
-      itemTheme.appItemColor,
-      itemTheme[`theme-${itemTheme.current || 'default'}`],
-      app.disabled ? 'disabled cursor-not-allowed' : 'cursor-pointer',
-    )}
-    onClick={!app.disabled ? () => onClick(app) : undefined}
-  >
-    <div className="w-20 h-20 rounded-[12px] mb-4 overflow-hidden">
-      {fallbackMap[app.appName] ? (
-        <LayoutGrid className="w-full h-full" />
-      ) : (
-        <img
-          src={app.icon}
-          draggable="false"
-          loading="lazy"
-          className="w-full h-full object-cover"
-          onError={() => onImgError(app.appName)}
-        />
+const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemStyles }) => {
+  const [loaded, setLoaded] = useState(false);
+  
+  return (
+    <div
+      key={app.appName}
+      className={clsx(
+        itemStyles.app,
+        itemTheme.appItemColor,
+        itemTheme[`theme-${itemTheme.current || 'default'}`],
+        app.disabled ? 'disabled cursor-not-allowed' : 'cursor-pointer',
       )}
+      onClick={!app.disabled ? () => onClick(app) : undefined}
+    >
+      <div className="w-20 h-20 rounded-[12px] mb-4 overflow-hidden relative">
+        {!loaded && !fallbackMap[app.appName] && (
+          <div className="absolute inset-0 bg-gray-700 animate-pulse" />
+        )}
+        {fallbackMap[app.appName] ? (
+          <LayoutGrid className="w-full h-full" />
+        ) : (
+          <img
+            src={app.icon}
+            draggable="false"
+            loading="lazy"
+            className="w-full h-full object-cover"
+            onLoad={() => setLoaded(true)}
+            onError={() => onImgError(app.appName)}
+          />
+        )}
+      </div>
+      <p className="text-m font-semibold">{app.appName.split('').join('\u200B')}</p>
+      <p className="text-sm mt-2">{(app.desc || '').split('').join('\u200B')}</p>
     </div>
-    <p className="text-m font-semibold">{app.appName.split('').join('\u200B')}</p>
-    <p className="text-sm mt-2">{(app.desc || '').split('').join('\u200B')}</p>
-  </div>
-));
+  );
+});
 
 const Apps = memo(() => {
   const nav = useNavigate();
