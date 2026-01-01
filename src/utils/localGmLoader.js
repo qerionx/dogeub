@@ -157,10 +157,26 @@ class LocalGmLoader {
     if (!('serviceWorker' in navigator)) return;
     try {
       const regs = await navigator.serviceWorker.getRegistrations();
-      const existing = regs.find(r => r.active?.scriptURL.includes('/loadersw.js'));
-      if (!existing) await navigator.serviceWorker.register('/loadersw.js');
-    } catch (err) {
-      console.error('sw error:', err);
+      let existing = regs.find(r => r.active?.scriptURL.includes('/loadersw.js'));
+      
+      if (!existing) {
+        const reg = await navigator.serviceWorker.register('/loadersw.js');
+        await navigator.serviceWorker.ready;
+        return reg;
+      }
+      
+      if (existing.installing || existing.waiting) {
+        await new Promise(resolve => {
+          const sw = existing.installing || existing.waiting;
+          sw.addEventListener('statechange', () => {
+            if (sw.state === 'activated') resolve();
+          });
+        });
+      }
+      
+      return existing;
+    } catch (e) {
+      console.error('from local gm loader', e);
     }
   }
 
