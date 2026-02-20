@@ -122,4 +122,5 @@ app.setNotFoundHandler((req, reply) =>
     : reply.code(404).send({ error: "Not Found" })
 );
 
-app.listen({ port, host: "::" }).then(() => console.log(`Server running on ${port}`));
+const host = process.env.HOST || "0.0.0.0";
+app.listen({ port, host }).then(() => console.log(`Server running on ${port}`));
