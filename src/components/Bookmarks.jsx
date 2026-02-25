@@ -214,8 +214,10 @@ const Bookmarks = ({ isOpen, onClose, inLoader = false }) => {
                       const activeTab = tabs.find(t => t.active);
                       if (activeTab) {
                         const processedUrl = process(fixUrl(b.url), false, o.prType || 'auto', o.engine || null);
-                        setLoading(activeTab.id, true);
-                        updateUrl(activeTab.id, processedUrl);
+                        if (processedUrl) {
+                          setLoading(activeTab.id, true);
+                          updateUrl(activeTab.id, processedUrl);
+                        }
                         onClose();
                       }
                     } else {

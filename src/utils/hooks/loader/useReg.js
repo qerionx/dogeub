@@ -8,7 +8,10 @@ import store from './useLoaderStore';
 export default function useReg() {
   const { options } = useOptions();
   const ws = `${location.protocol == 'http:' ? 'ws:' : 'wss:'}//${location.host}/wisp/`;
-  const sws = [{ path: '/sw.js', scope: '/portal/k12/' }, { path: '/s_sw.js', scope: '/ham/' }];
+  const sws = [
+    { path: new URL('/sw.js', location.origin).href, scope: new URL('/portal/k12/', location.origin).href }, 
+    { path: new URL('/s_sw.js', location.origin).href, scope: new URL('/ham/', location.origin).href }
+  ];
   const setWispStatus = store((s) => s.setWispStatus);
 
   useEffect(() => {
@@ -49,7 +52,7 @@ export default function useReg() {
         }
       }
 
-      const connection = new BareMuxConnection('/baremux/worker.js');
+      const connection = new BareMuxConnection(new URL('/baremux/worker.js', location.href).href);
       isStaticBuild && setWispStatus('init');
       let socket = null;
       try {

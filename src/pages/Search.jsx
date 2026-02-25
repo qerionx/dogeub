@@ -21,7 +21,7 @@ export default function Loader({ config = {} }) {
       //only 1 tab on initial load so tabs[0]
       const tab = tabs[0];
       const processedUrl = process(url, false, options.prType || 'auto', options.engine || null);
-      if (tab.url !== processedUrl) {
+      if (processedUrl && tab.url !== processedUrl) {
         updateUrl(tab.id, processedUrl);
       }
     }

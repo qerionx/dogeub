@@ -51,6 +51,9 @@ export const process = (input, decode = false, prType, engine = "https://www.goo
     return decoded.endsWith('/') ? decoded.slice(0, -1) : decoded;
   } else {
     const final = check(input, engine);
+    if (!final || final.trim() === '') {
+      return null;
+    }
     const encoded = prefix === '/ham/' ? mango.enc(final) : mango.enc(final);
     return `${location.protocol}//${location.host}${prefix}${encoded}`;
   }

@@ -82,6 +82,10 @@ const store = create((set) => ({
     set((state) => ({
       tabs: state.tabs.map((tab) => {
         if (tab.id !== tabId) return tab;
+        
+        if (!url || (typeof url === 'string' && url.trim() === '')) {
+          return tab;
+        }
 
         if (addToHistory) {
           //FORWARD history gets removed -- & add new url

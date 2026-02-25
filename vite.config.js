@@ -62,6 +62,7 @@ export default defineConfig(({ command }) => {
   const environment = isStatic ? 'static' : command === 'serve' ? 'dev' : 'stable';
 
   return {
+    base: isStatic ? './' : '/',
     plugins: [
       react(),
       vitePluginBundleObfuscator(obf),
@@ -89,6 +90,22 @@ export default defineConfig(({ command }) => {
             return code
               .replace(/\/assets-fb\//g, 'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/img/server/')
               .replace(/\/assets\/img\//g, 'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/img/');
+          }
+          /*
+            this may be weird, bc even if static = true,
+            the images/files are still there, so why rewrite to use jsdelivr?
+            because we feel like it. (this is needed under very specific circumstances)
+          */
+          if (id.endsWith('Logo.jsx')) {
+            return code
+              .replace(/['"]\/logo\.svg['"]/g, "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/logo.svg'");
+          }
+          if (id.endsWith('useReg.js')) {
+            return code
+              .replace(/['"]\/eggs\/scramjet\.wasm\.wasm['"]/g, "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.wasm.wasm'")
+              .replace(/['"]\/eggs\/scramjet\.all\.js['"]/g, "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.all.js'")
+              .replace(/['"]\/eggs\/scramjet\.sync\.js['"]/g, "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.sync.js'")
+              .replace(/['"]\/libcurl\/index\.mjs['"]/g, "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/libcurl/index.mjs'");
           }
         },
       },

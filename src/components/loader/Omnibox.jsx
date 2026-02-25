@@ -84,7 +84,10 @@ const Omnibox = () => {
 
   useEffect(() => {
     if (state?.url && activeTab) {
-      updateUrl(activeTab.id, process(state.url, false, options.prType || 'auto', options.engine || undefined));
+      const processedUrl = process(state.url, false, options.prType || 'auto', options.engine || undefined);
+      if (processedUrl) {
+        updateUrl(activeTab.id, processedUrl);
+      }
       navigate('.', { replace: true, state: {} });
     }
   }, [state?.url, activeTab?.id]);
@@ -131,7 +134,10 @@ const Omnibox = () => {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && activeTab && input.length !== 0) {
-              updateUrl(activeTab.id, process(input, false, options.prType || 'auto', options.engine || undefined));
+              const processedUrl = process(input, false, options.prType || 'auto', options.engine || undefined);
+              if (processedUrl) {
+                updateUrl(activeTab.id, processedUrl);
+              }
               inputRef.current.blur();
             }
           }}

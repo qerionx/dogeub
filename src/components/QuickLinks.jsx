@@ -31,11 +31,18 @@ const QuickLinks = ({ cls, nav = true, navigating }) => {
   });
 
   const go = (url) => {
-    nav ? navigate("/search", {
-      state: {
-        url: url,
+    if (nav) {
+      navigate("/search", {
+        state: {
+          url: url,
+        }
+      });
+    } else {
+      const processedUrl = navigating.process(url);
+      if (processedUrl) {
+        navigating.go(navigating.id, processedUrl);
       }
-    }) : navigating.go(navigating.id, navigating.process(url));
+    }
   };
 
   useEffect(() => {
