@@ -1,1 +1,463 @@
-const DB_NAME="gm loader db",DB_VER=1,STORE_NAME="gms",gmCcahe=new Map;async function openDB(){return new Promise(((t,e)=>{const s=indexedDB.open(DB_NAME,DB_VER);s.onsuccess=()=>t(s.result),s.onerror=()=>e(s.error)}))}async function getGms(t){if(gmCcahe.has(t))return gmCcahe.get(t);const e=await openDB();return new Promise(((s,n)=>{const o=e.transaction(["gms"],"readonly").objectStore("gms").get(t);o.onsuccess=()=>{const e=o.result;e&&gmCcahe.set(t,e),s(e)},o.onerror=()=>n(o.error)}))}function b64tooBlob(t,e){const s=atob(t),n=new ArrayBuffer(s.length),o=new Uint8Array(n);for(let t=0;t<s.length;t++)o[t]=s.charCodeAt(t);return new Blob([o],{type:e})}function findFile(t,e){const s=t=>t.replace(/^\/+/,"").replace(/\\/g,"/"),n=s(e);if(t[e])return{data:t[e],path:e};if(t[n])return{data:t[n],path:n};for(const e in t){const o=s(e);if(o===n)return{data:t[e],path:e};if(o===n+"/"||o+"/"===n)return{data:t[e],path:e}}const o=n.split("/").pop();if(o)for(const e in t){const a=s(e);if(a.split("/").pop()===o&&(a.endsWith(n)||n.endsWith(a)))return{data:t[e],path:e}}const a=n.toLowerCase();for(const e in t){if(s(e).toLowerCase()===a)return{data:t[e],path:e}}return null}self.addEventListener("fetch",(t=>{const e=new URL(t.request.url).pathname.match(/\/game\/([^\/]+)\/(.+)$/);if("OPTIONS"!==t.request.method){if(e){const s=e[1],n=e[2];t.respondWith((async()=>{try{const t=await getGms(s);if(!t||!t.files)return new Response("game not found",{status:404});const e=findFile(t.files,n);if(!e)return new Response("couldnt find file: "+n,{status:404});const o=e.data;let a,r,i;if("object"==typeof o&&void 0!==o.content)a=o.content,r=o.mime||o.mimeType||"application/octet-stream",i=void 0!==o.binary?o.binary:o.isBinary;else{a=o;const t=e.path.split(".").pop().toLowerCase();r={html:"text/html",css:"text/css",js:"application/javascript",json:"application/json",png:"image/png",jpg:"image/jpeg",gif:"image/gif",svg:"image/svg+xml",woff:"font/woff",woff2:"font/woff2",ttf:"font/ttf",wasm:"application/wasm",txt:"text/plain",xml:"application/xml",webp:"image/webp",mp3:"audio/mpeg",ogg:"audio/ogg",wav:"audio/wav"}[t]||"application/octet-stream";i=!new Set(["html","htm","css","js","mjs","json","xml","txt","md","csv","svg"]).has(t)}const c=new Headers({"Content-Type":r+(i?"":"; charset=utf-8"),"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, HEAD, OPTIONS","Access-Control-Allow-Headers":"*","Cache-Control":"no-cache, no-store, must-revalidate","X-Content-Type-Options":"nosniff"}),l=i?b64tooBlob(a,r):a;return new Response(l,{status:200,statusText:"OK",headers:c})}catch(t){return new Response("err: "+t.message,{status:500})}})())}}else t.respondWith(new Response(null,{status:200,headers:new Headers({"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, HEAD, OPTIONS","Access-Control-Allow-Headers":"*","Access-Control-Max-Age":"86400"})}))})),self.addEventListener("install",(t=>{t.waitUntil(self.skipWaiting())})),self.addEventListener("activate",(t=>{t.waitUntil(clients.claim())})),self.addEventListener("message",(t=>{t.data&&"SKIP_WAITING"===t.data.type&&self.skipWaiting(),t.data&&"CLEAR_CACHE"===t.data.type&&(gmCcahe.clear(),t.ports[0].postMessage({success:!0}))}));
+const DB_NAME = 'gm loader db';
+const DB_VER = 1;
+const STORE_NAME = 'gms';
+
+const APP_SHELL_CACHE = 'dogeub-shell-v1';
+const APP_ASSET_CACHE = 'dogeub-assets-v1';
+const GAME_ROUTE_REGEX = /\/game\/([^/]+)\/(.+)$/;
+
+const TEXT_EXTENSIONS = new Set([
+  'html',
+  'htm',
+  'css',
+  'js',
+  'mjs',
+  'json',
+  'xml',
+  'txt',
+  'md',
+  'csv',
+  'svg',
+]);
+
+const CACHEABLE_DESTINATIONS = new Set([
+  'script',
+  'style',
+  'worker',
+  'font',
+  'image',
+  'manifest',
+  'document',
+]);
+
+const MIME_BY_EXTENSION = {
+  html: 'text/html',
+  htm: 'text/html',
+  css: 'text/css',
+  js: 'application/javascript',
+  mjs: 'application/javascript',
+  json: 'application/json',
+  xml: 'application/xml',
+  txt: 'text/plain',
+  md: 'text/markdown',
+  csv: 'text/csv',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  svg: 'image/svg+xml',
+  ico: 'image/x-icon',
+  webp: 'image/webp',
+  bmp: 'image/bmp',
+  avif: 'image/avif',
+  woff: 'font/woff',
+  woff2: 'font/woff2',
+  ttf: 'font/ttf',
+  otf: 'font/otf',
+  eot: 'application/vnd.ms-fontobject',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  ogv: 'video/ogg',
+  wasm: 'application/wasm',
+  zip: 'application/zip',
+  gz: 'application/gzip',
+  pdf: 'application/pdf',
+  data: 'application/octet-stream',
+  unityweb: 'application/octet-stream',
+  bundle: 'application/octet-stream',
+  bin: 'application/octet-stream',
+  dat: 'application/octet-stream',
+  mem: 'application/octet-stream',
+  asset: 'application/octet-stream',
+  resource: 'application/octet-stream',
+};
+
+const gmCache = new Map();
+
+const scopeUrl = (path) => new URL(path, self.registration.scope).toString();
+
+const getPrecacheUrls = () => ['.', './index.html', './icon.svg', './logo.svg'].map(scopeUrl);
+
+const isSameOrigin = (url) => url.origin === self.location.origin;
+
+const canCacheResponse = (response, request) => {
+  if (!response) {
+    return false;
+  }
+
+  if (response.type === 'opaque') {
+    return request?.destination === 'image';
+  }
+
+  return response.ok && (response.type === 'basic' || response.type === 'default');
+};
+
+async function warmAppShellCache() {
+  const cache = await caches.open(APP_SHELL_CACHE);
+  const urls = getPrecacheUrls();
+
+  await Promise.all(
+    urls.map(async (url) => {
+      try {
+        const response = await fetch(url, { cache: 'reload' });
+        if (canCacheResponse(response)) {
+          await cache.put(url, response.clone());
+        }
+      } catch {
+        // Ignore failures during install; runtime requests will populate cache later.
+      }
+    }),
+  );
+}
+
+async function cleanupOldCaches() {
+  const activeCaches = new Set([APP_SHELL_CACHE, APP_ASSET_CACHE]);
+  const keys = await caches.keys();
+
+  await Promise.all(
+    keys.map((key) => {
+      if ((key.startsWith('dogeub-shell-') || key.startsWith('dogeub-assets-')) && !activeCaches.has(key)) {
+        return caches.delete(key);
+      }
+
+      return Promise.resolve(false);
+    }),
+  );
+}
+
+async function handleNavigationRequest(request) {
+  const shellCache = await caches.open(APP_SHELL_CACHE);
+
+  try {
+    const networkResponse = await fetch(request);
+
+    if (canCacheResponse(networkResponse)) {
+      await shellCache.put(request, networkResponse.clone());
+      await shellCache.put(scopeUrl('./index.html'), networkResponse.clone());
+      await shellCache.put(scopeUrl('./'), networkResponse.clone());
+    }
+
+    return networkResponse;
+  } catch {
+    const exactMatch = await shellCache.match(request, { ignoreSearch: true });
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    const indexFallback = await shellCache.match(scopeUrl('./index.html'));
+    if (indexFallback) {
+      return indexFallback;
+    }
+
+    const rootFallback = await shellCache.match(scopeUrl('./'));
+    if (rootFallback) {
+      return rootFallback;
+    }
+
+    return new Response('Offline and no cached app shell is available yet.', {
+      status: 503,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+      },
+    });
+  }
+}
+
+const shouldHandleAssetRequest = (request, url) => {
+  if (GAME_ROUTE_REGEX.test(url.pathname)) {
+    return false;
+  }
+
+  if (!isSameOrigin(url)) {
+    const looksLikeIcon = /\.(?:png|jpe?g|gif|svg|webp|ico|avif|bmp)$/i.test(url.pathname);
+    return request.destination === 'image' || looksLikeIcon;
+  }
+
+  if (request.cache === 'only-if-cached' && request.mode !== 'same-origin') {
+    return false;
+  }
+
+  if (CACHEABLE_DESTINATIONS.has(request.destination)) {
+    return true;
+  }
+
+  return /\.(?:css|js|mjs|json|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|wasm)$/i.test(url.pathname);
+};
+
+const shouldStoreAssetResponse = (request, url) => {
+  if (request.destination === 'image') {
+    return url.pathname === '/logo.svg';
+  }
+
+  return true;
+};
+
+async function handleAssetRequest(request) {
+  const assetCache = await caches.open(APP_ASSET_CACHE);
+  const cachedResponse = await assetCache.match(request);
+
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  try {
+    const networkResponse = await fetch(request);
+    const requestUrl = new URL(request.url);
+
+    if (canCacheResponse(networkResponse, request) && shouldStoreAssetResponse(request, requestUrl)) {
+      await assetCache.put(request, networkResponse.clone());
+    }
+
+    return networkResponse;
+  } catch {
+    const fallbackMatch = await assetCache.match(request, { ignoreSearch: true });
+    if (fallbackMatch) {
+      return fallbackMatch;
+    }
+
+    if (request.destination === 'document') {
+      const shellCache = await caches.open(APP_SHELL_CACHE);
+      const indexFallback = await shellCache.match(scopeUrl('./index.html'));
+
+      if (indexFallback) {
+        return indexFallback;
+      }
+    }
+
+    return new Response('Offline resource unavailable.', {
+      status: 503,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+      },
+    });
+  }
+}
+
+async function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VER);
+
+    request.onerror = () => reject(request.error);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+  });
+}
+
+async function getGm(gmName) {
+  if (gmCache.has(gmName)) {
+    return gmCache.get(gmName);
+  }
+
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction([STORE_NAME], 'readonly').objectStore(STORE_NAME).get(gmName);
+
+    request.onsuccess = () => {
+      const game = request.result;
+      if (game) {
+        gmCache.set(gmName, game);
+      }
+      resolve(game);
+    };
+
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function b64ToBlob(base64Content, mimeType) {
+  const binary = atob(base64Content);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new Blob([bytes], { type: mimeType });
+}
+
+function normalizePath(path) {
+  return path.replace(/^\/+/, '').replace(/\\/g, '/');
+}
+
+function findFile(files, requestedPath) {
+  const normalizedRequest = normalizePath(requestedPath);
+
+  if (files[requestedPath]) {
+    return { data: files[requestedPath], path: requestedPath };
+  }
+
+  if (files[normalizedRequest]) {
+    return { data: files[normalizedRequest], path: normalizedRequest };
+  }
+
+  for (const filePath in files) {
+    const normalizedFilePath = normalizePath(filePath);
+
+    if (
+      normalizedFilePath === normalizedRequest ||
+      normalizedFilePath === `${normalizedRequest}/` ||
+      `${normalizedFilePath}/` === normalizedRequest
+    ) {
+      return { data: files[filePath], path: filePath };
+    }
+  }
+
+  const requestBaseName = normalizedRequest.split('/').pop();
+  if (requestBaseName) {
+    for (const filePath in files) {
+      const normalizedFilePath = normalizePath(filePath);
+      const fileBaseName = normalizedFilePath.split('/').pop();
+
+      if (
+        fileBaseName === requestBaseName &&
+        (normalizedFilePath.endsWith(normalizedRequest) || normalizedRequest.endsWith(normalizedFilePath))
+      ) {
+        return { data: files[filePath], path: filePath };
+      }
+    }
+  }
+
+  const lowercaseRequest = normalizedRequest.toLowerCase();
+  for (const filePath in files) {
+    if (normalizePath(filePath).toLowerCase() === lowercaseRequest) {
+      return { data: files[filePath], path: filePath };
+    }
+  }
+
+  return null;
+}
+
+function getMimeFromPath(path) {
+  const extension = path.split('.').pop()?.toLowerCase();
+  return MIME_BY_EXTENSION[extension] || 'application/octet-stream';
+}
+
+async function handleLocalGameRequest(gameName, requestedPath) {
+  try {
+    const game = await getGm(gameName);
+
+    if (!game || !game.files) {
+      return new Response('game not found', { status: 404 });
+    }
+
+    const decodedPath = decodeURIComponent(requestedPath);
+    const found = findFile(game.files, decodedPath);
+
+    if (!found) {
+      return new Response(`couldnt find file: ${decodedPath}`, { status: 404 });
+    }
+
+    const extension = found.path.split('.').pop()?.toLowerCase() || '';
+    const fileData = found.data;
+    let content = fileData;
+    let mimeType = getMimeFromPath(found.path);
+    let isBinary = !TEXT_EXTENSIONS.has(extension);
+
+    if (typeof fileData === 'object' && fileData !== null && fileData.content !== undefined) {
+      content = fileData.content;
+      mimeType = fileData.mime || fileData.mimeType || mimeType;
+      isBinary = fileData.binary ?? fileData.isBinary ?? isBinary;
+    }
+
+    const responseHeaders = new Headers({
+      'Content-Type': `${mimeType}${isBinary ? '' : '; charset=utf-8'}`,
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+
+    const body = isBinary ? b64ToBlob(content, mimeType) : content;
+
+    return new Response(body, {
+      status: 200,
+      statusText: 'OK',
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    return new Response(`err: ${error.message}`, { status: 500 });
+  }
+}
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    (async () => {
+      await warmAppShellCache();
+      await self.skipWaiting();
+    })(),
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      await cleanupOldCaches();
+      await clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+  const gameMatch = url.pathname.match(GAME_ROUTE_REGEX);
+
+  if (request.method === 'OPTIONS' && gameMatch) {
+    event.respondWith(
+      new Response(null, {
+        status: 200,
+        headers: new Headers({
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+          'Access-Control-Allow-Headers': '*',
+          'Access-Control-Max-Age': '86400',
+        }),
+      }),
+    );
+    return;
+  }
+
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    return;
+  }
+
+  if (gameMatch) {
+    event.respondWith(handleLocalGameRequest(gameMatch[1], gameMatch[2]));
+    return;
+  }
+
+  if (request.mode === 'navigate') {
+    if (!isSameOrigin(url)) {
+      return;
+    }
+    event.respondWith(handleNavigationRequest(request));
+    return;
+  }
+
+  if (shouldHandleAssetRequest(request, url)) {
+    event.respondWith(handleAssetRequest(request));
+  }
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+
+  if (event.data?.type === 'CLEAR_CACHE') {
+    gmCache.clear();
+    event.ports?.[0]?.postMessage({ success: true });
+  }
+});

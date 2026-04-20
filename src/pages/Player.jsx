@@ -4,7 +4,7 @@ import Loader from '../components/player/Loader';
 import { useLocation, Navigate } from 'react-router-dom';
 import { useOptions } from '/src/utils/optionsContext';
 
-const Player = () => {
+const Player = ({ isOffline = false }) => {
   const location = useLocation();
   const app = location.state?.app;
   const { options } = useOptions();
@@ -16,7 +16,7 @@ const Player = () => {
 
   return (
     <>
-      <Nav />
+      {!isOffline ? <Nav /> : null}
       <div className="w-[80%] mx-auto flex flex-col gap-4 mt-4 mb-8">
         <Breadcrumb theme={options.theme} name={app.appName} />
         <Loader theme={options.theme} app={app} />

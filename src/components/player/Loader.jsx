@@ -22,7 +22,7 @@ const Loader = ({ theme, app }) => {
   const nav = useNavigate();
   const gmRef = useRef(null);
   const [zoom, setZoom] = useState(1);
-  const { gmUrl, loading, downloading } = useLocalGmLoader(app);
+  const { gmUrl, loading, downloading, error } = useLocalGmLoader(app);
   const isLocal = app?.local;
   const activeFrameRef = loaderStore((state) => state.activeFrameRef);
 
@@ -82,14 +82,24 @@ const Loader = ({ theme, app }) => {
           {downloading ? 'Downloading...' : 'Loading...'}
         </div>
       ) : isLocal ? (
-        <iframe
-          key={gmUrl}
-          src={gmUrl}
-          ref={gmRef}
-          onContextMenu={(e) => e.preventDefault()}
-          className="w-full flex-grow"
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock"
-        />
+        error ? (
+          <div className="w-full flex-grow flex items-center justify-center px-6 text-center text-sm opacity-80">
+            {error}
+          </div>
+        ) : gmUrl ? (
+          <iframe
+            key={gmUrl}
+            src={gmUrl}
+            ref={gmRef}
+            onContextMenu={(e) => e.preventDefault()}
+            className="w-full flex-grow"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock"
+          />
+        ) : (
+          <div className="w-full flex-grow flex items-center justify-center px-6 text-center text-sm opacity-80">
+            Preparing downloaded game...
+          </div>
+        )
       ) : (
         <Search config={{ url: app?.url, ui: false, zoom: zoom, alerts: false }} />
       )}
