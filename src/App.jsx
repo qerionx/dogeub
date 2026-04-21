@@ -123,7 +123,7 @@ const ThemedApp = memo(() => {
   }, [isOffline]);
 
   useEffect(() => {
-    let cancaled = false;
+    let canceled = false;
 
     const run = async () => {
       const jocc =
@@ -134,12 +134,12 @@ const ThemedApp = memo(() => {
             : '';
 
       if (!jocc) {
-        if (!cancaled) setAdKeyPassed(false);
+        if (!canceled) setAdKeyPassed(false);
         return;
       }
 
       const valid = await validateAdKey(jocc);
-      if (cancaled) return;
+      if (canceled) return;
 
       setAdKeyPassed(valid);
 
@@ -151,7 +151,7 @@ const ThemedApp = memo(() => {
     run();
 
     return () => {
-      cancaled = true;
+      canceled = true;
     };
   }, [options.adKey, options.adKeyInput, setAdKeyPassed, updateOption]);
 
@@ -161,7 +161,7 @@ const ThemedApp = memo(() => {
       { path: '/materials', element: <Apps /> },
       { path: '/docs', element: <Apps2 /> },
       { path: '/docs/r/*', element: <Player isOffline={isOffline} /> },
-      { path: '/search', element: <Search />},
+      { path: '/search', element: <Search /> },
       { path: '/settings', element: <Settings /> },
       { path: '/portal/k12/*', element: <NotFound /> },
       { path: '/ham/*', element: <NotFound /> },

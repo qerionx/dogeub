@@ -1,11 +1,12 @@
 const LOADER_SW_SUFFIX = '/loadersw.js';
+const STATIC_BUILD = typeof isStaticBuild !== 'undefined' && isStaticBuild;
 
-const loaderSwPath = () => (isStaticBuild ? './loadersw.js' : '/loadersw.js');
-const loaderSwScope = () => (isStaticBuild ? './' : '/');
+const loaderSwPath = () => (STATIC_BUILD ? './loadersw.js' : '/loadersw.js');
+const loaderSwScope = () => (STATIC_BUILD ? './' : '/');
 
 const isLoaderWorkerScript = (scriptURL = '') => {
   try {
-    return new URL(scriptURL).pathname.endsWith(LOADER_SW_SUFFIX);
+    return new URL(scriptURL, window.location.href).pathname.endsWith(LOADER_SW_SUFFIX);
   } catch {
     return scriptURL.includes(LOADER_SW_SUFFIX);
   }
