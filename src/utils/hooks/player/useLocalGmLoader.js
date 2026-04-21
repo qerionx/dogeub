@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import LocalGmLoader from '../../localGmLoader';
 import { warmOfflineVisualAssets } from '../../offlineAssets';
 
@@ -9,13 +9,11 @@ export const useLocalGmLoader = (app) => {
   const [error, setError] = useState(null);
   const [loader] = useState(() => new LocalGmLoader());
 
-  useEffect(() => {
-    if (app?.local && app?.url) {
-      loadGm();
+  const loadGm = useCallback(async () => {
+    if (!app?.url) {
+      return;
     }
-  }, [app]);
 
-  const loadGm = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -31,7 +29,13 @@ export const useLocalGmLoader = (app) => {
       setLoading(false);
       setDownloading(false);
     }
-  };
+  }, [app?.url, loader]);
+
+  useEffect(() => {
+    if (app?.local && app?.url) {
+      loadGm();
+    }
+  }, [app?.local, app?.url, loadGm]);
 
   return { gmUrl, loading, downloading, error };
 };

@@ -5,6 +5,7 @@ const DB_NAME = 'gm loader db';
 const DB_VER = 1;
 const STORE_NAME = 'gms';
 const TEXT_EXTS = new Set(['html', 'htm', 'css', 'js', 'mjs', 'json', 'xml', 'txt', 'md', 'csv', 'svg']);
+const STATIC_BUILD = typeof isStaticBuild !== 'undefined' && isStaticBuild;
 
 class LocalGmLoader {
   constructor() {
@@ -181,10 +182,11 @@ class LocalGmLoader {
     
     const isSplitZip = Array.isArray(url);
     const firstUrl = isSplitZip ? url[0] : url;
-    const gmName = firstUrl.split('/').pop().replace(/\.zip$/i, '') || 'gm-' + Date.now();
+    const cleanedUrl = firstUrl.split('?')[0].split('#')[0];
+    const gmName = cleanedUrl.split('/').pop()?.replace(/\.zip$/i, '') || `gm-${Date.now()}`;
     const existing = await this.getGm(gmName);
     
-    const gameUrl = isStaticBuild
+    const gameUrl = STATIC_BUILD
       ? `./game/${gmName}/index.html`
       : `/game/${gmName}/index.html`;
         

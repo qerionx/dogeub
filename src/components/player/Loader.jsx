@@ -42,7 +42,7 @@ const Loader = ({ theme, app }) => {
         url: app?.url,
       },
     });
-  }, [app?.url]);
+  }, [app?.url, nav]);
 
   const handleZoom = useCallback((direction) => {
     setZoom((prev) => {
