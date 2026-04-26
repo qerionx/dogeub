@@ -86,11 +86,16 @@ export default function useReg() {
 
       isStaticBuild && setWispStatus('init');
       let socket = null;
-      try {
-        socket = isStaticBuild ? await returnWServer() : null;
-      } catch (e) {
-        socket = null;
+      
+      //only run if no wisp is set otherwise dont
+      if (isStaticBuild && (options.wServer == null || options.wServer === '')) {
+        try {
+          socket = await returnWServer();
+        } catch (e) {
+          socket = null;
+        }
       }
+      
       const activeWisp = options.wServer != null && options.wServer !== ''
         ? options.wServer
         : socket;

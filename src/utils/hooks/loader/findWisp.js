@@ -14,33 +14,39 @@ async function dc(payload, key) {
 
 export async function fetchW() {
   let tx = await j(acok);
-  let settled = false;
-  let cur = 0;
   let arr = (await dc(tx, await dc())).split(',').map((u) => `wss://${u}/wisp/`);
-  let c = arr.length;
 
   return new Promise((resolve) => {
-    for (const url of arr) {
+    let index = 0;
+
+    function testNext() {
+      if (index >= arr.length) {
+        resolve(null);
+        return;
+      }
+
+      const url = arr[index];
+      index++;
       let ws = new WebSocket(url);
+
+      const timeout = setTimeout(() => {
+        ws.close();
+        testNext();
+      }, 2500);
+
       ws.onopen = () => {
-        settled = true;
+        clearTimeout(timeout);
         ws.close();
         resolve(url);
       };
+
       ws.onerror = () => {
+        clearTimeout(timeout);
         ws.close();
-        if (++cur == c) {
-          settled = true;
-          resolve(null);
-        }
+        testNext();
       };
     }
 
-    setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        resolve(null);
-      }
-    }, 10000);
+    testNext();
   });
 }
