@@ -202,7 +202,7 @@ export const advancedConfig = ({ options, updateOption }) => ({
     value: options.wServer
       ? options.wServer
       : !isStaticBuild
-        ? `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/wisp/`
+        ? `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/connection/`
         : '',
     type: 'input',
     action: (b) => updateOption({ wServer: b || null }),

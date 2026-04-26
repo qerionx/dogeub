@@ -185,7 +185,7 @@ Object.assign(wisp.options, {
 });
 
 const routeRequest = (req, resOrSocket, head) => {
-  if (req.url?.startsWith('/wisp/')) return wisp.routeRequest(req, resOrSocket, head);
+  if (req.url?.startsWith('/connection/')) return wisp.routeRequest(req, resOrSocket, head);
   if (bare.shouldRoute(req))
     return head ? bare.routeUpgrade(req, resOrSocket, head) : bare.routeRequest(req, resOrSocket);
 };

@@ -10,7 +10,7 @@ export default function useReg() {
   const retryFindWInt = 30000;
   const uvScopePath = '/q/r/';
   const sjScopePath = '/k/';
-  const ws = `${location.protocol == 'http:' ? 'ws:' : 'wss:'}//${location.host}/wisp/`;
+  const ws = `${location.protocol == 'http:' ? 'ws:' : 'wss:'}//${location.host}/connection/`;
   const sws = isStaticBuild ? [
     { path: new URL('./sw.js', location.href).href, scope: new URL(`.${uvScopePath}`, location.href).href },
     { path: new URL('./s_sw.js', location.href).href, scope: new URL(`.${sjScopePath}`, location.href).href }

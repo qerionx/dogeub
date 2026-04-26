@@ -14,7 +14,7 @@ async function dc(payload, key) {
 
 export async function fetchW() {
   let tx = await j(acok);
-  let arr = (await dc(tx, await dc())).split(',').map((u) => `wss://${u}/wisp/`);
+  let arr = (await dc(tx, await dc())).split(',').map((u) => `wss://${u}/connection/`);
 
   return new Promise((resolve) => {
     let index = 0;
