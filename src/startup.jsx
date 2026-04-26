@@ -1,2 +1,6 @@
-import { check } from './utils/utils.js';
-import './main.jsx';
+import { initSettingsStore } from './utils/settingsStore';
+
+await initSettingsStore();
+
+await import('./utils/utils.js');
+await import('./main.jsx');

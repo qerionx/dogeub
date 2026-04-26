@@ -7,23 +7,28 @@ import store from './useLoaderStore';
 
 export default function useReg() {
   const { options } = useOptions();
+  const retryFindWInt = 30000;
+  const uvScopePath = '/q/r/';
+  const sjScopePath = '/k/';
   const ws = `${location.protocol == 'http:' ? 'ws:' : 'wss:'}//${location.host}/wisp/`;
   const sws = isStaticBuild ? [
-    { path: new URL('./sw.js', location.href).href, scope: new URL('./portal/k12/', location.href).href },
-    { path: new URL('./s_sw.js', location.href).href, scope: new URL('./ham/', location.href).href }
+    { path: new URL('./sw.js', location.href).href, scope: new URL(`.${uvScopePath}`, location.href).href },
+    { path: new URL('./s_sw.js', location.href).href, scope: new URL(`.${sjScopePath}`, location.href).href }
   ] : [
-    { path: new URL('/sw.js', location.origin).href, scope: new URL('/portal/k12/', location.origin).href },
-    { path: new URL('/s_sw.js', location.origin).href, scope: new URL('/ham/', location.origin).href }
+    { path: new URL('/sw.js', location.origin).href, scope: new URL(uvScopePath, location.origin).href },
+    { path: new URL('/s_sw.js', location.origin).href, scope: new URL(sjScopePath, location.origin).href }
   ];
   const setWispStatus = store((s) => s.setWispStatus);
 
   useEffect(() => {
+    let cancelled = false;
+
     const init = async () => {
       if (!window.scr) {
         const script = document.createElement('script');
         script.src = isStaticBuild
-          ? new URL('./eggs/scramjet.all.js', location.href).pathname
-          : '/eggs/scramjet.all.js';
+          ? new URL('./z/b.js', location.href).pathname
+          : '/z/b.js';
         await new Promise((resolve, reject) => {
           script.onload = resolve;
           script.onerror = reject;
@@ -34,18 +39,18 @@ export default function useReg() {
       const { ScramjetController } = $scramjetLoadController();
 
       const hamPrefix = isStaticBuild
-        ? new URL('./ham/', location.href).pathname
-        : '/ham/';
+        ? new URL(`.${sjScopePath}`, location.href).pathname
+        : sjScopePath;
       const eggsPath = isStaticBuild
-        ? new URL('./eggs/', location.href).pathname
-        : '/eggs/';
+        ? new URL('./z/', location.href).pathname
+        : '/z/';
 
       window.scr = new ScramjetController({
         prefix: hamPrefix,
         files: {
-          wasm: eggsPath + 'scramjet.wasm.wasm',
-          all: eggsPath + 'scramjet.all.js',
-          sync: eggsPath + 'scramjet.sync.js',
+          wasm: eggsPath + 'a.w',
+          all: eggsPath + 'b.js',
+          sync: eggsPath + 'c.js',
         },
         flags: { rewriterLogs: false, scramitize: false, cleanErrors: true, sourcemaps: true },
         codec: makecodec()
@@ -65,9 +70,20 @@ export default function useReg() {
       }
 
       const baremuxPath = isStaticBuild
-        ? new URL('./baremux/worker.js', location.href).href
-        : new URL('/baremux/worker.js', location.origin).href;
+        ? new URL('./y/a.js', location.href).href
+        : new URL('/y/a.js', location.origin).href;
       const connection = new BareMuxConnection(baremuxPath);
+      const libcurlPath = isStaticBuild
+        ? new URL('./x/a.mjs', location.href).pathname
+        : '/x/a.mjs';
+      const applyTransport = async (wispUrl) => {
+        await connection.setTransport(libcurlPath, [
+          {
+            wisp: isStaticBuild ? wispUrl : ws,
+          },
+        ]);
+      };
+
       isStaticBuild && setWispStatus('init');
       let socket = null;
       try {
@@ -81,19 +97,39 @@ export default function useReg() {
       isStaticBuild && (!activeWisp ? setWispStatus(false) : setWispStatus(true));
 
       if (isStaticBuild && !activeWisp) {
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        while (!cancelled) {
+          await sleep(retryFindWInt);
+          if (cancelled) return;
+
+          let retryWisp = null;
+          try {
+            retryWisp = await returnWServer();
+          } catch {
+            retryWisp = null;
+          }
+
+          if (!retryWisp || cancelled) continue;
+
+          try {
+            await applyTransport(retryWisp);
+            if (cancelled) return;
+            setWispStatus(true);
+            return;
+          } catch {
+            setWispStatus(false);
+          }
+        }
         return;
       }
 
-      const libcurlPath = isStaticBuild
-        ? new URL('./libcurl/index.mjs', location.href).pathname
-        : '/libcurl/index.mjs';
-      await connection.setTransport(libcurlPath, [
-        {
-          wisp: isStaticBuild ? activeWisp : ws,
-        },
-      ]);
+      await applyTransport(activeWisp);
     };
 
     init();
+
+    return () => {
+      cancelled = true;
+    };
   }, [options.wServer]);
 }

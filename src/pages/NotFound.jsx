@@ -19,13 +19,13 @@ const NotFound = () => {
   };
 
   useEffect(() => {
-    if (loc.pathname.includes('ham/') || loc.pathname.includes('portal/k12/')) {
+    if (loc.pathname.includes('k/') || loc.pathname.includes('q/r/')) {
       return;
     }
     nav('/');
   }, [loc, nav]);
 
-  if (loc.pathname.includes('ham/') || loc.pathname.includes('portal/k12/')) {
+  if (loc.pathname.includes('k/') || loc.pathname.includes('q/r/')) {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center p-6"

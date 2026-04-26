@@ -1,6 +1,6 @@
 const k = new TextEncoder().encode(btoa(new Date().toISOString().slice(0, 10) + location.host).split('').reverse().join('').slice(6.7));
-const cfg = "/portal/uv.config.js";
-const pfx = "/portal/k12/";
+const cfg = "/q/e.js";
+const pfx = "/q/r/";
 const trim = s => !s || s === "/" ? "" : s.replace(/\/$/, "");
 
 const basePath = (() => {
@@ -47,11 +47,11 @@ self.__uv$config = {
             return new TextDecoder().decode(o) + s.slice(h);
         } catch { return decodeURIComponent(s); }
     },
-    handler: basePath + "/portal/uv.handler.js",
-    client: basePath + "/portal/uv.client.js", 
-    bundle: basePath + "/portal/uv.bundle.js",
-    config: basePath + "/portal/uv.config.js",
-    sw: basePath + "/portal/uv.sw.js"
+    handler: basePath + "/q/a.js",
+    client: basePath + "/q/b.js", 
+    bundle: basePath + "/q/c.js",
+    config: basePath + "/q/e.js",
+    sw: basePath + "/q/d.js"
 };
 
 self.console = new Proxy({}, {

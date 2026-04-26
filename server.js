@@ -17,7 +17,7 @@ const __dirname = dirname(__filename);
 
 const port = process.env.PORT || 2345;
 const server = createServer();
-const bare = process.env.BARE !== "false" ? createBareServer("/seal/") : null;
+const bare = process.env.BARE === "true" ? createBareServer("/seal/") : null;
 logging.set_level(logging.NONE);
 
 Object.assign(wisp.options, {

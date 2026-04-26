@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node mvchunks.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -22,9 +22,9 @@
     "@mercuryworkshop/scramjet": "https://github.com/MercuryWorkshop/scramjet/releases/download/latest/mercuryworkshop-scramjet-2.0.0-alpha.tgz",
     "@mercuryworkshop/wisp-js": "^0.3.3",
     "@mui/material": "^7.3.1",
+    "@titaniumnetwork-dev/ultraviolet": "3.2.7",
     "@tomphttp/bare-server-node": "^2.0.5",
     "bare-mux-fork": "https://github.com/qerionx/bare-mux-noconsolelogs/releases/download/v2.1.8/bare-mux.tgz",
-    "@titaniumnetwork-dev/ultraviolet": "3.2.7",
     "basecoat-css": "^0.3.1",
     "clsx": "^2.1.1",
     "cookie-parser": "^1.4.7",
@@ -40,6 +40,7 @@
     "react-dom": "^19.1.0",
     "react-ga4": "^2.1.0",
     "react-router-dom": "^7.7.1",
+    "terser": "^5.46.2",
     "vite-plugin-static-copy": "^3.1.2",
     "zustand": "^5.0.8"
   },

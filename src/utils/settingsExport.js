@@ -1,10 +1,13 @@
-const NAME = 'dogeub-settings.json';
+import { getStoredOptions, setStoredOptions } from './settingsStore';
+
+const NAME = 'dub-options.json';
 
 const dataUrl = (o) =>
   URL.createObjectURL(new Blob([JSON.stringify(o, null, 2)], { type: 'application/json' }));
 
-export const exportSettings = (options = JSON.parse(localStorage.getItem('options') || '{}')) => {
-  const url = dataUrl(options);
+export const exportSettings = async (options) => {
+  const resolvedOptions = options || (await getStoredOptions());
+  const url = dataUrl(resolvedOptions);
   const a = document.createElement('a');
   a.href = url;
   a.download = NAME;
@@ -26,8 +29,7 @@ export const importSettings = () => {
         const o = JSON.parse(String(r.result));
         const s = o?.options && typeof o.options === 'object' ? o.options : o;
         if (!s || typeof s !== 'object' || Array.isArray(s)) return;
-        localStorage.setItem('options', JSON.stringify(s));
-        location.reload();
+        void setStoredOptions(s).then(() => location.reload());
       } catch {}
     };
     r.readAsText(f);

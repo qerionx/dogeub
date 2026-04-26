@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { useOptions } from '/src/utils/optionsContext';
+import { getStoredOptionsSync } from '/src/utils/settingsStore';
 import { Plus, Bolt, Globe, Pencil, Trash2, CircleX } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import LinkDialog from './NewQuickLink';
@@ -23,11 +24,7 @@ const QuickLinks = ({ cls, nav = true, navigating }) => {
   ];
 
   const [quickLinks, setQuickLinks] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('options'))?.quickLinks || defaultLinks;
-    } catch {
-      return defaultLinks;
-    }
+    return getStoredOptionsSync().quickLinks || defaultLinks;
   });
 
   const go = (url) => {
@@ -73,7 +70,7 @@ const QuickLinks = ({ cls, nav = true, navigating }) => {
   const linkLogo = 'w-[2.5rem] h-[2.5rem] flex items-center justify-center rounded-full bg-[#6d6d6d73]';
 
   return (
-    <div className={clsx('flex flex-wrap justify-center gap-4', cls || 'w-full max-w-[40rem] mx-auto mt-[16rem]')}>
+    <div className={clsx('flex flex-wrap justify-center gap-4', cls || 'w-full max-w-160 mx-auto mt-64')}>
       {quickLinks.map((link, i) => (
         <div key={i} className={linkItem} onClick={() => go(link.link)}>
           <div
@@ -90,7 +87,7 @@ const QuickLinks = ({ cls, nav = true, navigating }) => {
             {shiftHeld ? <CircleX size="16" className="opacity-70 text-red-500" /> : <Bolt size="16" className="opacity-50" />}
             {menuOpen === i && (
               <div
-                className="absolute top-5 right-0 rounded-md shadow-lg border border-white/10 py-1 w-[101px] z-50"
+                className="absolute top-5 right-0 rounded-md shadow-lg border border-white/10 py-1 w-25.25 z-50"
                 style={{ backgroundColor: options.quickModalBgColor || '#252f3e' }}
                 onClick={(e) => e.stopPropagation()}
               >

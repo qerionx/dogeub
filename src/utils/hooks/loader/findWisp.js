@@ -1,5 +1,4 @@
-const WISP_SOURCE_URL = 'https://cdn.jsdelivr.net/gh/ashxmed/symmetrical-adventure@latest/synapse.js';
-const POPUNDER_SOURCE_URL = 'https://cdn.jsdelivr.net/gh/ashxmed/symmetrical-adventure@latest/neuron.js';
+const acok = 'https://cdn.jsdelivr.net/gh/ashxmed/symmetrical-adventure@latest/synapse.js';
 
 const j = (u) => fetch(u).then((r) => r.json());
 
@@ -13,23 +12,8 @@ async function dc(payload, key) {
   return D.decode(d);
 }
 
-let popunderKeysPromise = null;
-
-export async function isPopunderKeyValid(key) {
-  key = key?.trim();
-  if (!key) return false;
-
-  try {
-    popunderKeysPromise || (popunderKeysPromise = j(POPUNDER_SOURCE_URL).then(async (tx) => (await dc(tx, await dc())).split(',')));
-    return (await popunderKeysPromise).some((item) => item.trim() === key);
-  } catch {
-    popunderKeysPromise = null;
-    return false;
-  }
-}
-
 export async function fetchW() {
-  let tx = await j(WISP_SOURCE_URL);
+  let tx = await j(acok);
   let settled = false;
   let cur = 0;
   let arr = (await dc(tx, await dc())).split(',').map((u) => `wss://${u}/wisp/`);

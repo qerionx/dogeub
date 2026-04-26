@@ -30,11 +30,11 @@ const scrwlist = new Set([
 
 export const process = (input, decode = false, prType, engine = "https://www.google.com/search?q=") => {
   const upwefix = isStaticBuild 
-    ? new URL('./portal/k12/', location.href).pathname
-    : '/portal/k12/';
+    ? new URL('./q/r/', location.href).pathname
+    : '/q/r/';
   const eggowaffle = isStaticBuild
-    ? new URL('./ham/', location.href).pathname
-    : '/ham/';
+    ? new URL('./k/', location.href).pathname
+    : '/k/';
   
   let prefix;
 

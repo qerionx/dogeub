@@ -47,7 +47,7 @@ const Omnibox = () => {
   const navigate = useNavigate();
   const { iframeUrls } = loaderStore();
 
-  const isProcied = (url) => url?.includes('portal/k12/') || url?.includes('ham/');
+  const isProcied = (url) => url?.includes('q/r/') || url?.includes('k/');
   const isNewTab = (url) => !url || url === 'tabs://new' || url.endsWith('/new');
 
   const updateIcon = (url) => {
@@ -116,7 +116,7 @@ const Omnibox = () => {
       <div
         className={clsx(
           ' h-[calc(100%-8px)] w-full',
-          'rounded-lg border-1 flex items-center px-2 ml-1 mr-1',
+          'rounded-lg border flex items-center px-2 ml-1 mr-1',
         )}
         style={{
           backgroundColor: options.omninputColor || '#06080d8f',

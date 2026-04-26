@@ -1,7 +1,12 @@
 import pkg from '../../package.json';
+import {
+  clearStoredOptions,
+  getStoredOptionsSync,
+  setStoredOptions,
+} from './settingsStore';
 let blur, focus, panicListener;
 
-export const resetInstance = () => {
+export const resetInstance = async () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
       .getRegistrations()
@@ -10,13 +15,14 @@ export const resetInstance = () => {
   if ('caches' in window) {
     caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
   }
+  await clearStoredOptions();
   localStorage.clear();
   sessionStorage.clear();
   location.href = '/';
 };
 
 export const ckOff = () => {
-  const op = JSON.parse(localStorage.options || '{}');
+  const op = getStoredOptionsSync();
   import('./config.js').then(({ meta }) => {
     const { tabName: t, tabIcon: i } = op;
     const { tabName: ogName, tabIcon: ogIcon } = meta[0].value;
@@ -29,7 +35,7 @@ export const ckOff = () => {
     if (op.clkOff) {
       set(t, i);
       blur = () => {
-        const op = JSON.parse(localStorage.options || '{}');
+        const op = getStoredOptionsSync();
         set(op.tabName || ogName, op.tabIcon || ogIcon);
       };
       focus = () => set(ogName, ogIcon);
@@ -44,7 +50,7 @@ export const ckOff = () => {
 };
 
 export const panic = () => {
-  const op = JSON.parse(localStorage.options || '{}');
+  const op = getStoredOptionsSync();
   const panicConfig = op.panic;
   if (panicListener) {
     window.removeEventListener('keydown', panicListener);
@@ -90,8 +96,27 @@ export const openAboutBlankPopup = (redirectCurrentTab = true) => {
   const s = d.createElement('script');
   s.textContent = `
     const d = document;
-    setInterval(() => {
-      const op = JSON.parse(localStorage.getItem('options') || '{}');
+    const readOptions = () => new Promise((resolve) => {
+      const request = indexedDB.open('dub-opt', 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+      };
+      request.onsuccess = () => {
+        try {
+          const db = request.result;
+          const tx = db.transaction('kv', 'readonly');
+          const get = tx.objectStore('kv').get('options');
+          get.onsuccess = () => resolve(get.result || {});
+          get.onerror = () => resolve({});
+        } catch {
+          resolve({});
+        }
+      };
+      request.onerror = () => resolve({});
+    });
+    setInterval(async () => {
+      const op = await readOptions();
       d.title = op.tabName || '';
       let icon = d.querySelector("link[rel~='icon']");
       if (!icon) {
@@ -108,8 +133,10 @@ export const openAboutBlankPopup = (redirectCurrentTab = true) => {
 };
 
 export const check = (() => {
-  const op = JSON.parse(localStorage.options || '{}');
-  !op.version && localStorage.setItem('options', JSON.stringify({ version: pkg.version }));
+    const op = getStoredOptionsSync();
+    if (!op.version) {
+      void setStoredOptions({ ...op, version: pkg.version });
+    }
   if (op.beforeUnload) {
     window.addEventListener('beforeunload', (e) => {
       e.preventDefault();

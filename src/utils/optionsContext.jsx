@@ -1,36 +1,37 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  getStoredOptionsSync,
+  initSettingsStore,
+  setStoredOptions,
+} from './settingsStore';
 
 const OptionsContext = createContext();
 
-const getStoredOptions = () => {
-  try {
-    return JSON.parse(localStorage.getItem('options') || '{}');
-  } catch {
-    return {};
-  }
-};
-
 export const OptionsProvider = ({ children }) => {
-  const [options, setOptions] = useState(getStoredOptions);
+  const [options, setOptions] = useState(getStoredOptionsSync);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('options', JSON.stringify(options));
-    } catch {}
-  }, [options]);
+    let active = true;
+
+    initSettingsStore().then((stored) => {
+      if (active) setOptions(stored);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const updateOption = useCallback((obj, immediate = true) => {
     if (!obj || typeof obj !== 'object') return;
 
-    const current = getStoredOptions();
+    const current = getStoredOptionsSync();
     const updated = { ...current, ...obj };
 
-    try {
-      localStorage.setItem('options', JSON.stringify(updated));
-    } catch {}
+    void setStoredOptions(updated);
 
     if (immediate) {
-      setOptions((prev) => ({ ...prev, ...obj }));
+      setOptions(updated);
     }
   }, []);
 

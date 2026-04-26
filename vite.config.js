@@ -1,6 +1,9 @@
 import { defineConfig, normalizePath } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, rmSync } from 'node:fs';
+import { transform } from 'esbuild';
+import { relative } from 'node:path';
 import react from '@vitejs/plugin-react-swc';
 import vitePluginBundleObfuscator from 'vite-plugin-bundle-obfuscator';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
@@ -14,13 +17,32 @@ import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 import dotenv from 'dotenv';
 
 dotenv.config();
-const useBare = process.env.BARE === 'false' ? false : true;
+const useBare = process.env.BARE === 'true';
 const isStatic = process.env.STATIC === 'true';
 const gaMeasurementId = 'G-HWLK0PZVBM';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 logging.set_level(logging.NONE);
 let bare;
+
+const PATH_OBF = {
+  libcurlDir: 'x',
+  baremuxDir: 'y',
+  eggsDir: 'z',
+  uvDir: 'q',
+  uvPrefix: '/q/r/',
+  sjPrefix: '/k/',
+  libcurlIndex: 'a.mjs',
+  baremuxWorker: 'a.js',
+  sjWasm: 'a.w',
+  sjAll: 'b.js',
+  sjSync: 'c.js',
+  uvHandler: 'a.js',
+  uvClient: 'b.js',
+  uvBundle: 'c.js',
+  uvSw: 'd.js',
+  uvCfg: 'e.js',
+};
 
 const svgDomShim = `(() => {
   const ns = 'http://www.w3.org/1999/xhtml';
@@ -97,10 +119,12 @@ const createSvgEntry = (bundle) => {
     `  { tag: 'link', attrs: { rel: 'icon', type: 'image/svg+xml', href: '' } },`,
     `  { tag: 'meta', attrs: { name: 'viewport', content: 'initial-scale=1, width=device-width' } },`,
     ...preloadFiles.map(
-      (file) => `  { tag: 'link', attrs: { rel: 'modulepreload', href: './${file}', crossorigin: '' } },`,
+      (file) =>
+        `  { tag: 'link', attrs: { rel: 'modulepreload', href: './${file}', crossorigin: '' } },`,
     ),
     ...cssFiles.map(
-      (file) => `  { tag: 'link', attrs: { rel: 'stylesheet', href: './${file}', crossorigin: '' } },`,
+      (file) =>
+        `  { tag: 'link', attrs: { rel: 'stylesheet', href: './${file}', crossorigin: '' } },`,
     ),
     `];`,
     `for (const nodeDef of headNodes) {`,
@@ -173,14 +197,14 @@ const obf = {
   options: {
     compact: true,
     controlFlowFlattening: true,
-    controlFlowFlatteningThreshold: 0.3,
+    controlFlowFlatteningThreshold: 0.6,
     deadCodeInjection: false,
     debugProtection: false,
     disableConsoleOutput: true,
     identifierNamesGenerator: 'mangled',
     selfDefending: false,
     simplify: true,
-    splitStrings: false,
+    splitStrings: true,
     stringArray: true,
     stringArrayEncoding: [],
     stringArrayCallsTransform: false,
@@ -201,44 +225,183 @@ export default defineConfig(({ command }) => {
       vitePluginBundleObfuscator(obf),
       viteStaticCopy({
         targets: [
-          { src: [normalizePath(resolve(libcurlPath, '*'))], dest: 'libcurl' },
-          { src: [normalizePath(resolve(baremuxPath, '*'))], dest: 'baremux' },
-          { src: [normalizePath(resolve(scramjetPath, '*'))], dest: 'eggs' },
+          {
+            src: [normalizePath(resolve(libcurlPath, 'index.mjs'))],
+            dest: PATH_OBF.libcurlDir,
+            rename: PATH_OBF.libcurlIndex,
+          },
+          {
+            src: [normalizePath(resolve(baremuxPath, 'worker.js'))],
+            dest: PATH_OBF.baremuxDir,
+            rename: PATH_OBF.baremuxWorker,
+          },
+          {
+            src: [normalizePath(resolve(scramjetPath, 'scramjet.wasm.wasm'))],
+            dest: PATH_OBF.eggsDir,
+            rename: PATH_OBF.sjWasm,
+          },
+          {
+            src: [normalizePath(resolve(scramjetPath, 'scramjet.all.js'))],
+            dest: PATH_OBF.eggsDir,
+            rename: PATH_OBF.sjAll,
+          },
+          {
+            src: [normalizePath(resolve(scramjetPath, 'scramjet.sync.js'))],
+            dest: PATH_OBF.eggsDir,
+            rename: PATH_OBF.sjSync,
+          },
           useBare && { src: [normalizePath(resolve(bareModulePath, '*'))], dest: 'baremod' },
           {
-            src: [
-              normalizePath(resolve(uvPath, 'uv.handler.js')),
-              normalizePath(resolve(uvPath, 'uv.client.js')),
-              normalizePath(resolve(uvPath, 'uv.bundle.js')),
-              normalizePath(resolve(uvPath, 'uv.sw.js')),
-            ],
-            dest: 'portal',
+            src: [normalizePath(resolve(uvPath, 'uv.handler.js'))],
+            dest: PATH_OBF.uvDir,
+            rename: PATH_OBF.uvHandler,
+          },
+          {
+            src: [normalizePath(resolve(uvPath, 'uv.client.js'))],
+            dest: PATH_OBF.uvDir,
+            rename: PATH_OBF.uvClient,
+          },
+          {
+            src: [normalizePath(resolve(uvPath, 'uv.bundle.js'))],
+            dest: PATH_OBF.uvDir,
+            rename: PATH_OBF.uvBundle,
+          },
+          {
+            src: [normalizePath(resolve(uvPath, 'uv.sw.js'))],
+            dest: PATH_OBF.uvDir,
+            rename: PATH_OBF.uvSw,
+          },
+          {
+            src: [normalizePath(resolve(__dirname, 'public/portal/uv.config.js'))],
+            dest: PATH_OBF.uvDir,
+            rename: PATH_OBF.uvCfg,
           },
         ].filter(Boolean),
       }),
+      {
+        name: 'minify-public',
+        apply: 'build',
+        async closeBundle() {
+          const publicDir = resolve(__dirname, 'public');
+          const distDir = resolve(__dirname, 'dist');
+
+          const minifyFile = async (input, output) => {
+            const code = readFileSync(input, 'utf8');
+
+            const result = await transform(code, {
+              minify: true,
+              minifyIdentifiers: true,
+              minifySyntax: true,
+              minifyWhitespace: true,
+              legalComments: 'none',
+              target: 'es2022',
+            });
+
+            writeFileSync(output, result.code, 'utf8');
+          };
+
+          const walkAndMinify = async (dir) => {
+            for (const file of readdirSync(dir)) {
+              const full = resolve(dir, file);
+
+              if (statSync(full).isDirectory()) {
+                await walkAndMinify(full);
+                continue;
+              }
+
+              if (!file.endsWith('.js')) continue;
+
+              await minifyFile(full, full);
+            }
+          };
+
+          const walkPublic = async (dir) => {
+            for (const file of readdirSync(dir)) {
+              const full = resolve(dir, file);
+
+              if (statSync(full).isDirectory()) {
+                await walkPublic(full);
+                continue;
+              }
+
+              if (!file.endsWith('.js')) continue;
+
+              const rel = relative(publicDir, full);
+              if (!useBare && normalizePath(rel).startsWith('baremod/')) continue;
+              if (normalizePath(rel) === 'portal/uv.config.js') continue;
+              const out = resolve(distDir, rel);
+
+              await minifyFile(full, out);
+            }
+          };
+
+          await walkPublic(publicDir);
+
+          const minifyTargets = [
+            PATH_OBF.libcurlDir,
+            PATH_OBF.baremuxDir,
+            PATH_OBF.eggsDir,
+            PATH_OBF.uvDir,
+            ...(useBare ? ['baremod'] : []),
+          ];
+
+          for (const dir of minifyTargets) {
+            const target = resolve(distDir, dir);
+            try {
+              await walkAndMinify(target);
+            } catch {}
+          }
+
+          const oldflie = resolve(distDir, 'portal/uv.config.js');
+          if (existsSync(oldflie)) {
+            rmSync(oldflie, { force: true });
+          }
+          if (!useBare) {
+            const baremodDir = resolve(distDir, 'baremod');
+            if (existsSync(baremodDir)) {
+              rmSync(baremodDir, { recursive: true, force: true });
+            }
+          }
+        },
+      },
       isStatic && {
         name: 'replace-cdn',
         transform(code, id) {
           if (id.endsWith('apps.json') || id.endsWith('QuickLinks.jsx')) {
             return code
-              .replace(/\/assets-fb\//g, 'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/img/server/')
-              .replace(/\/assets\/img\//g, 'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/img/');
+              .replace(
+                /\/assets-fb\//g,
+                'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/img/server/',
+              )
+              .replace(
+                /\/assets\/img\//g,
+                'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/img/',
+              );
           }
-          /*
-            this may be weird, bc even if static = true,
-            the images/files are still there, so why rewrite to use jsdelivr?
-            because we feel like it. (this is needed under very specific circumstances)
-          */
           if (id.endsWith('Logo.jsx')) {
-            return code
-              .replace(/['"]\/logo\.svg['"]/g, "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/logo.svg'");
+            return code.replace(
+              /['"]\/logo\.svg['"]/g,
+              "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/logo.svg'",
+            );
           }
           if (id.endsWith('useReg.js')) {
             return code
-              .replace(/['"]\/eggs\/scramjet\.wasm\.wasm['"]/g, "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.wasm.wasm'")
-              .replace(/['"]\/eggs\/scramjet\.all\.js['"]/g, "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.all.js'")
-              .replace(/['"]\/eggs\/scramjet\.sync\.js['"]/g, "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.sync.js'")
-              .replace(/['"]\/libcurl\/index\.mjs['"]/g, "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/libcurl/index.mjs'");
+              .replace(
+                /['"]\/z\/a\.w['"]/g,
+                "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.wasm.wasm'",
+              )
+              .replace(
+                /['"]\/z\/b\.js['"]/g,
+                "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.all.js'",
+              )
+              .replace(
+                /['"]\/z\/c\.js['"]/g,
+                "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.sync.js'",
+              )
+              .replace(
+                /['"]\/x\/a\.mjs['"]/g,
+                "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/libcurl/index.mjs'",
+              );
           }
         },
       },
@@ -281,8 +444,6 @@ export default defineConfig(({ command }) => {
           });
         },
       },
-      // create svg for jsdelivr
-      // i know it's weird but it works somehow
       isStatic && {
         name: 'emit-svg-entry',
         apply: 'build',
@@ -313,16 +474,19 @@ export default defineConfig(({ command }) => {
           entryFileNames: '[hash].js',
           chunkFileNames: 'chunks/[name].[hash].js',
           assetFileNames: 'assets/[hash].[ext]',
-          manualChunks: (id) => {
+          manualChunks(id) {
             if (!id.includes('node_modules')) return;
+
             const m = id.split('node_modules/')[1];
             const pkg = m.startsWith('@') ? m.split('/').slice(0, 2).join('/') : m.split('/')[0];
-            if (/react-router|react-dom|react\b/.test(pkg)) return 'react';
-            if (/^@mui\//.test(pkg) || /^@emotion\//.test(pkg)) return 'mui';
-            if (/lucide/.test(pkg)) return 'icons';
-            if (/react-ga4/.test(pkg)) return 'analytics';
-            if (/nprogress/.test(pkg)) return 'progress';
-            return 'vendor';
+
+            if (/react|scheduler/.test(pkg)) return 'a';
+            if (/router|history/.test(pkg)) return 'b';
+            if (/emotion|styled|css/.test(pkg)) return 'c';
+            if (/lucide|icon/.test(pkg)) return 'd';
+            if (/nprogress|analytics|ga/.test(pkg)) return 'e';
+
+            return 'f';
           },
         },
         treeshake: {

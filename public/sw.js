@@ -1,1 +1,1 @@
-importScripts("portal/uv.bundle.js"),importScripts("portal/uv.config.js"),importScripts("portal/uv.sw.js");const uv=new UVServiceWorker;async function handleRequest(t){return uv.route(t)?await uv.fetch(t):await fetch(t.request)}self.addEventListener("fetch",(t=>{t.respondWith(handleRequest(t))}));
+importScripts("q/c.js"),importScripts("q/e.js"),importScripts("q/d.js");const uv=new UVServiceWorker;async function handleRequest(t){return uv.route(t)?await uv.fetch(t):await fetch(t.request)}self.addEventListener("fetch",(t=>{t.respondWith(handleRequest(t))}));
