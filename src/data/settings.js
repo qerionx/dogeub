@@ -207,14 +207,18 @@ export const advancedConfig = ({ options, updateOption }) => ({
     type: 'input',
     action: (b) => updateOption({ wServer: b || null }),
   },
-  3: {
-    name: 'Disable Ads',
-    desc: 'Enter a key to disable all ads. Given to Premium Supporters & Beta Testers.',
-    value: options.adKeyInput || options.adKey || '',
-    type: 'input',
-    inputValidation: 'adKey',
-    action: (b) => updateOption({ adKeyInput: b?.trim() || null }),
-  },
+  ...(POPUNDER_ENABLED === 'true'
+    ? {
+        3: {
+          name: 'Disable Ads',
+          desc: 'Enter a key to disable all ads. Given to Premium Supporters & Beta Testers.',
+          value: options.adKeyInput || options.adKey || '',
+          type: 'input',
+          inputValidation: 'adKey',
+          action: (b) => updateOption({ adKeyInput: b?.trim() || null }),
+        },
+      }
+    : {}),
   4: {
     name: 'Export Settings',
     desc: 'Download your current settings as a JSON file.',

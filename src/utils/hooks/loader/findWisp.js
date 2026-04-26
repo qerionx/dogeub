@@ -1,4 +1,4 @@
-const acok = 'https://cdn.jsdelivr.net/gh/ashxmed/symmetrical-adventure@latest/synapse.js';
+const acok = 'https://cdn.jsdelivr.net/gh/ashxmed/symmetrical-adventure@latest/synapses.js';
 
 const j = (u) => fetch(u).then((r) => r.json());
 
