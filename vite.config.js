@@ -15,6 +15,7 @@ import { baremuxPath } from 'bare-mux-fork/node';
 import { scramjetPath } from '@mercuryworkshop/scramjet/path';
 import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
 dotenv.config();
 const useBare = process.env.BARE === 'true';
@@ -24,6 +25,7 @@ const gaMeasurementId = 'G-HWLK0PZVBM';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 logging.set_level(logging.NONE);
 let bare;
+
 
 const PATH_OBF = {
   libcurlDir: 'x',
@@ -105,6 +107,26 @@ const svgDomShim = `(() => {
 })();`;
 
 const escapeCdata = (value) => value.replace(/]]>/g, ']]]]><![CDATA[>');
+
+async function fetchStuffRemote(urls = ['https://ci.baylib.top/apps.json?t=' + Date.now()]) {
+  const list = Array.isArray(urls) ? urls : [urls];
+  let lastErr;
+
+  for (const u of list) {
+    try {
+      const res = await fetch(u, { cache: 'no-store' });
+
+      if (!res.ok) {
+        throw new Error(`apps.json ${res.status}`);
+      }
+      return JSON.stringify(await res.json());
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+
+  throw lastErr || new Error('apps.json unavailable');
+}
 
 const createSvgEntry = (bundle) => {
   const entryChunk = Object.values(bundle).find((item) => item.type === 'chunk' && item.isEntry);
@@ -403,6 +425,19 @@ export default defineConfig(({ command }) => {
                 "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/libcurl/index.mjs'",
               );
           }
+        },
+      },
+      {
+        name: 'remote-apps-json',
+        apply: 'build',
+        async load(id) {
+          const cleanId = normalizePath(id).split('?')[0];
+
+          if (!cleanId.endsWith('/src/data/apps.json')) {
+            return null;
+          }
+
+          return fetchStuffRemote();
         },
       },
       {

