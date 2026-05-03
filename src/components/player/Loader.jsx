@@ -13,9 +13,9 @@ import { useLocalGmLoader } from '/src/utils/hooks/player/useLocalGmLoader';
 import { useNavigate } from 'react-router-dom';
 import Control from './Controls';
 import InfoCard from './InfoCard';
+import Tooltip from '/src/components/Tooltip';
 import theming from '/src/styles/theming.module.css';
 import clsx from 'clsx';
-import Tooltip from '@mui/material/Tooltip';
 import loaderStore from '/src/utils/hooks/loader/useLoaderStore';
 
 const Loader = ({ theme, app }) => {

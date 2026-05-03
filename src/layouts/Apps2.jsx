@@ -1,13 +1,12 @@
 import Nav from '../layouts/Nav';
-import { useState, useMemo, useEffect, useCallback, memo, useRef, lazy, Suspense } from 'react';
+import { useState, useMemo, useEffect, useCallback, memo, useRef } from 'react';
 import { Search, LayoutGrid, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useOptions } from '/src/utils/optionsContext';
+import Pagination from '../components/Pagination';
 import styles from '../styles/apps.module.css';
 import theme from '../styles/theming.module.css';
 import clsx from 'clsx';
-
-const Pagination = lazy(() => import('@mui/material/Pagination'));
 
 const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemStyles }) => {
   const [loaded, setLoaded] = useState(false);
@@ -293,27 +292,12 @@ const Games = memo(() => {
 
           {filtered.filteredGames.length > perPage && (
             <div className="flex flex-col items-center pb-7">
-              <Suspense>
-                <Pagination
-                  count={filtered.totalPages}
-                  page={page}
-                  onChange={(_, v) => setPage(v)}
-                  shape="rounded"
-                  variant="outlined"
-                  sx={{
-                    '& .MuiPaginationItem-root': {
-                      color: options.paginationTextColor || '#9baec8',
-                      borderColor: options.paginationBorderColor || '#ffffff1c',
-                      backgroundColor: options.paginationBgColor || '#141d2b',
-                      fontFamily: 'SFProText',
-                    },
-                    '& .Mui-selected': {
-                      backgroundColor: `${options.paginationSelectedColor || '#75b3e8'} !important`,
-                      color: '#fff !important',
-                    },
-                  }}
-                />
-              </Suspense>
+              <Pagination
+                count={filtered.totalPages}
+                page={page}
+                onChange={(_, v) => setPage(v)}
+                options={options}
+              />
             </div>
           )}
         </>

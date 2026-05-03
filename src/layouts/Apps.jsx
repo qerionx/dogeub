@@ -1,13 +1,12 @@
 import Nav from '../layouts/Nav';
-import { useState, useMemo, useRef, useEffect, useCallback, memo, lazy, Suspense } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react';
 import { Search, ChevronDown, LayoutGrid } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useOptions } from '/src/utils/optionsContext';
+import Pagination from '../components/Pagination';
 import styles from '../styles/apps.module.css';
 import theme from '../styles/theming.module.css';
 import clsx from 'clsx';
-
-const Pagination = lazy(() => import('@mui/material/Pagination'));
 
 const SORT_OPTIONS = [
   { value: 'categorical', label: 'Categorical' },
@@ -178,27 +177,12 @@ const Apps = memo(() => {
 
       {filtered.filteredApps.length > perPage && (
         <div className="flex flex-col items-center pb-7">
-          <Suspense>
-            <Pagination
-              count={filtered.totalPages}
-              page={page}
-              onChange={(_, v) => setPage(v)}
-              shape="rounded"
-              variant="outlined"
-              sx={{
-                '& .MuiPaginationItem-root': {
-                  color: options.paginationTextColor || '#9baec8',
-                  borderColor: options.paginationBorderColor || '#ffffff1c',
-                  backgroundColor: options.paginationBgColor || '#141d2b',
-                  fontFamily: 'SFProText',
-                },
-                '& .Mui-selected': {
-                  backgroundColor: `${options.paginationSelectedColor || '#75b3e8'} !important`,
-                  color: '#fff !important',
-                },
-              }}
-            />
-          </Suspense>
+          <Pagination
+            count={filtered.totalPages}
+            page={page}
+            onChange={(_, v) => setPage(v)}
+            options={options}
+          />
         </div>
       )}
     </div>
