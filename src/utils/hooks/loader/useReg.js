@@ -7,7 +7,6 @@ import store from './useLoaderStore';
 
 export default function useReg() {
   const { options } = useOptions();
-  const retryFindWInt = 30000;
   const uvScopePath = '/q/r/';
   const sjScopePath = '/k/';
   const ws = `${location.protocol == 'http:' ? 'ws:' : 'wss:'}//${location.host}/connection/`;
@@ -102,29 +101,6 @@ export default function useReg() {
       isStaticBuild && (!activeWisp ? setWispStatus(false) : setWispStatus(true));
 
       if (isStaticBuild && !activeWisp) {
-        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-        while (!cancelled) {
-          await sleep(retryFindWInt);
-          if (cancelled) return;
-
-          let retryWisp = null;
-          try {
-            retryWisp = await returnWServer();
-          } catch {
-            retryWisp = null;
-          }
-
-          if (!retryWisp || cancelled) continue;
-
-          try {
-            await applyTransport(retryWisp);
-            if (cancelled) return;
-            setWispStatus(true);
-            return;
-          } catch {
-            setWispStatus(false);
-          }
-        }
         return;
       }
 

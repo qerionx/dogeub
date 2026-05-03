@@ -19,6 +19,7 @@ const store = create((set) => ({
   activeFrameRef: null,
   showUI: true,
   zoomLevels: {},
+  iframeReloads: {},
   //only used if isStaticBuild == true
   wispStatus: null,
   setWispStatus: (bool) => set({ wispStatus: bool }),
@@ -109,6 +110,13 @@ const store = create((set) => ({
     set((state) => ({
       tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, isLoading } : tab)),
     })),
+  reloadIframe: (tabId) =>
+    set((state) => ({
+      iframeReloads: {
+        ...state.iframeReloads,
+        [tabId]: (state.iframeReloads[tabId] || 0) + 1,
+      },
+    })),
   refreshTab: (tabId) => {
     const state = store.getState();
     const iframe = state.frameRefs?.current?.[tabId];
@@ -186,6 +194,7 @@ const store = create((set) => ({
       frameRefs: null,
       showTabs: showTb,
       iframeUrls: {},
+      iframeReloads: {},
     })),
 }));
 

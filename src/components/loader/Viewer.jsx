@@ -12,11 +12,12 @@ const Viewer = ({ conf = {} }) => {
   const updateUrl = loaderStore((state) => state.updateUrl);
   const updateTitle = loaderStore((state) => state.updateTitle);
   const setLoading = loaderStore((state) => state.setLoading);
+  const reloadIframe = loaderStore((state) => state.reloadIframe);
   const setFrameRefs = loaderStore((state) => state.setFrameRefs);
   // wispStatus: reps. if working Wisp server is found
   // (only when isStaticBuild == true)
   const wispStatus = loaderStore((state) => state.wispStatus);
-  const { iframeUrls, setIframeUrl, showMenu, toggleMenu } = loaderStore();
+  const { iframeUrls, iframeReloads, setIframeUrl, showMenu, toggleMenu } = loaderStore();
   const frameRefs = useRef({});
   const prevURL = useRef({});
   const prevTitle = useRef({});
@@ -44,7 +45,9 @@ const Viewer = ({ conf = {} }) => {
         try {
           const d = iframe.contentWindow?.document;
           if (d?.getElementById('errorTrace-wrapper') || d?.getElementById('uvHostname')) {
-            iframe.contentWindow.location.replace(tab.url);
+            setLoading(tab.id, true);
+            reloadIframe(tab.id);
+            return;
           }
           if (!enableAlerts && iframe.contentWindow) {
             iframe.contentWindow.alert = () => {};
@@ -91,7 +94,8 @@ const Viewer = ({ conf = {} }) => {
           if (curURL === 'about:blank') return;
           const d = iframe.contentWindow?.document;
           if (d?.getElementById('errorTrace-wrapper') || d?.getElementById('uvHostname')) {
-            iframe.contentWindow.location.replace(tab.url);
+            setLoading(tab.id, true);
+            reloadIframe(tab.id);
             return;
           }
           if (!enableAlerts && iframe.contentWindow) {
@@ -116,7 +120,7 @@ const Viewer = ({ conf = {} }) => {
       });
       clearInterval(interval);
     };
-  }, [tabs, setLoading, updateTitle, setIframeUrl, enableAlerts]);
+  }, [tabs, iframeReloads, setLoading, updateTitle, setIframeUrl, enableAlerts, reloadIframe]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -151,7 +155,7 @@ const Viewer = ({ conf = {} }) => {
         updateActiveFrameRef(iframeRef);
       }
     });
-  }, [tabs]);
+  }, [tabs, iframeReloads]);
 
   const activeNewTab = tabs.find((tab) => tab.url === 'tabs://new' && tab.active);
 
@@ -197,6 +201,7 @@ const Viewer = ({ conf = {} }) => {
             {!isStaticBuild ? (
               <iframe
                 ref={(el) => (frameRefs.current[id] = el)}
+                key={`${id}:${iframeReloads[id] || 0}`}
                 src={url}
                 style={{ display: 'block', width: '100%', height: '100%' }}
                 className="absolute inset-0 w-full h-full transition-opacity duration-200"
@@ -205,6 +210,7 @@ const Viewer = ({ conf = {} }) => {
               wispStatus === true && (
                 <iframe
                   ref={(el) => (frameRefs.current[id] = el)}
+                  key={`${id}:${iframeReloads[id] || 0}`}
                   src={url}
                   style={{ display: 'block', width: '100%', height: '100%' }}
                   className="absolute inset-0 w-full h-full transition-opacity duration-200"

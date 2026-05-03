@@ -315,6 +315,7 @@ export default defineConfig(({ command }) => {
               minifyIdentifiers: true,
               minifySyntax: true,
               minifyWhitespace: true,
+              drop: ['console'],
               legalComments: 'none',
               target: 'es2022',
             });
@@ -528,7 +529,13 @@ export default defineConfig(({ command }) => {
           moduleSideEffects: 'no-external',
         },
       },
-      minify: 'esbuild',
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        },
+      },
       sourcemap: false,
     },
     css: {
