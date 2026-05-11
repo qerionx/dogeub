@@ -10,7 +10,7 @@ import styles from '../styles/apps.module.css';
 import theme from '../styles/theming.module.css';
 import clsx from 'clsx';
 
-const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemStyles }) => {
+const AppCard = memo(function AppCard({ app, onClick, fallbackMap, onImgError, itemTheme, itemStyles }) {
   const [loaded, setLoaded] = useState(false);
   const hover = useRef(null);
   if (!hover.current) hover.current = createHoverWarm();
@@ -58,7 +58,7 @@ const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemSt
   );
 });
 
-const CategoryRow = memo(({ category, games, onClick, onViewMore, fallback, onImgError, theme, styles }) => {
+const CategoryRow = memo(function CategoryRow({ category, games, onClick, onViewMore, fallback, onImgError, theme, styles }) {
   const ref = useRef(null);
 
   const scroll = (dir) => {
