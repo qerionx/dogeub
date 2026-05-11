@@ -1,9 +1,11 @@
 import JSZip from 'jszip';
+import { ensureLoaderServiceWorker } from './registerLoaderSw';
 
 const DB_NAME = 'gm loader db';
 const DB_VER = 1;
 const STORE_NAME = 'gms';
 const TEXT_EXTS = new Set(['html', 'htm', 'css', 'js', 'mjs', 'json', 'xml', 'txt', 'md', 'csv', 'svg']);
+const STATIC_BUILD = typeof isStaticBuild !== 'undefined' && isStaticBuild;
 
 class LocalGmLoader {
   constructor() {
@@ -166,56 +168,11 @@ class LocalGmLoader {
   }
 
   async regSW() {
-    if (!('serviceWorker' in navigator)) return;
     try {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      let existing = regs.find(r => r.active?.scriptURL.includes('/loadersw.js'));
-      
-      if (!existing) {
-        const swPath = '/loadersw.js';
-        const swScope = '/';
-        
-        const reg = await navigator.serviceWorker.register(swPath, {
-          scope: swScope,
-          updateViaCache: 'none'
-        });
-        
-        await navigator.serviceWorker.ready;
-        
-        if (!navigator.serviceWorker.controller) {
-          await new Promise(resolve => {
-            navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
-          });
-        }
-        
-        return reg;
-      }
-      
-      if (existing.installing || existing.waiting) {
-        await new Promise(resolve => {
-          const sw = existing.installing || existing.waiting;
-          sw.addEventListener('statechange', () => {
-            if (sw.state === 'activated') {
-              resolve();
-            }
-          });
-        });
-      }
-      
-      if (!navigator.serviceWorker.controller) {
-        const reg = await navigator.serviceWorker.ready;
-        const sw = reg.active;
-        if (sw) {
-          sw.postMessage({ type: 'SKIP_WAITING' });
-          await new Promise(resolve => {
-            navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
-          });
-        }
-      }
-      
-      return existing;
+      return await ensureLoaderServiceWorker();
     } catch (e) {
       console.error('from local gm loader', e);
+      return null;
     }
   }
 
@@ -225,26 +182,35 @@ class LocalGmLoader {
     
     const isSplitZip = Array.isArray(url);
     const firstUrl = isSplitZip ? url[0] : url;
-    const gmName = firstUrl.split('/').pop().replace('.zip', '') || 'gm-' + Date.now();
+    const cleanedUrl = firstUrl.split('?')[0].split('#')[0];
+    const gmName = cleanedUrl.split('/').pop()?.replace(/\.zip$/i, '') || `gm-${Date.now()}`;
     const existing = await this.getGm(gmName);
     
-    const gameUrl = `/game/${gmName}/index.html`;
+    const gameUrl = STATIC_BUILD
+      ? `./game/${gmName}/index.html`
+      : `/game/${gmName}/index.html`;
         
     if (existing) {
       await this.updateLastPlayed(gmName);
       return { url: gameUrl, cached: true };
     }
 
+    if (!navigator.onLine) {
+      throw new Error('This game is not downloaded yet. Connect once to download it first.');
+    }
+
     if (onDownload) onDownload(true);
-    
-    const files = isSplitZip 
-      ? await this.extractMultipleZips(url)
-      : await this.extractZip(url);
-      
-    await this.saveGm(gmName, files);
-    if (onDownload) onDownload(false);
-    
-    return { url: gameUrl, cached: false };
+
+    try {
+      const files = isSplitZip
+        ? await this.extractMultipleZips(url)
+        : await this.extractZip(url);
+
+      await this.saveGm(gmName, files);
+      return { url: gameUrl, cached: false };
+    } finally {
+      if (onDownload) onDownload(false);
+    }
   }
 }
 
