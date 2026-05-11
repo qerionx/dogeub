@@ -44,7 +44,7 @@ const OfflineHub = () => {
 
   const onPlay = useCallback(
     (app) => {
-      nav('/docs/r', { state: { app } });
+      nav('/docs/r/', { state: { app } });
     },
     [nav],
   );
@@ -62,7 +62,7 @@ const OfflineHub = () => {
 
       {downloadedGames.length === 0 ? (
         <p className="mt-7 text-center text-sm opacity-70">
-          No downloaded local games found yet. Connect once and open a local game to save it.
+          No downloaded local games found yet. Connect once and open a local game to save it. Note: Some games may not work offline.
         </p>
       ) : (
         <div className="mt-8 w-full max-w-6xl flex flex-wrap justify-center gap-4">

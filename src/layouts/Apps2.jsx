@@ -10,7 +10,7 @@ import clsx from 'clsx';
 
 const Pagination = lazy(() => import('@mui/material/Pagination'));
 
-const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemStyles }) => {
+const AppCard = memo(function AppCard({ app, onClick, fallbackMap, onImgError, itemTheme, itemStyles }) {
   const [loaded, setLoaded] = useState(false);
   
   return (
@@ -51,7 +51,7 @@ const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemSt
   );
 });
 
-const CategoryRow = memo(({ category, games, onClick, onViewMore, fallback, onImgError, theme, styles }) => {
+const CategoryRow = memo(function CategoryRow({ category, games, onClick, onViewMore, fallback, onImgError, theme, styles }) {
   const ref = useRef(null);
 
   const scroll = (dir) => {
