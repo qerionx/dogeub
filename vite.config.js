@@ -407,25 +407,6 @@ export default defineConfig(({ command }) => {
               "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/logo.svg'",
             );
           }
-          if (id.endsWith('useReg.js')) {
-            return code
-              .replace(
-                /['"]\/z\/a\.w['"]/g,
-                "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.wasm.wasm'",
-              )
-              .replace(
-                /['"]\/z\/b\.js['"]/g,
-                "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.all.js'",
-              )
-              .replace(
-                /['"]\/z\/c\.js['"]/g,
-                "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/eggs/scramjet.sync.js'",
-              )
-              .replace(
-                /['"]\/x\/a\.mjs['"]/g,
-                "'https://cdn.jsdelivr.net/gh/DogeNetwork/v5-assets/libcurl/index.mjs'",
-              );
-          }
         },
       },
       {
