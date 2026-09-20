@@ -257,7 +257,7 @@ export const meta = [
   {
     option: 'Default',
     value: {
-      tabName: `v5-${__ENVIRONMENT__}-${pkg.version}`,
+      tabName: `edu-${__ENVIRONMENT__}-${pkg.version}`,
       tabIcon: './icon.svg',
     },
   },

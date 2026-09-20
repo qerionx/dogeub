@@ -90,7 +90,7 @@ const SearchContainer = memo(function SearchContainer({ logo = true, cls, nav = 
   }, []);
 
   const placeholder = useMemo(
-    () => `Search ${options.engineName || 'Google'} or type URL`,
+    () => `Search ${options.engineName || 'Google'} or enter URL`,
     [options.engineName],
   );
 
