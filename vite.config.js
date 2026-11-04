@@ -20,7 +20,6 @@ import fs from 'fs';
 dotenv.config();
 const useBare = process.env.BARE === 'true';
 const isStatic = process.env.STATIC === 'true';
-const useRemoteApps = process.env.REMOTE_APPS === 'true';
 const gaMeasurementId = 'G-HWLK0PZVBM';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -410,7 +409,7 @@ export default defineConfig(({ command }) => {
           }
         },
       },
-      useRemoteApps && {
+      {
         name: 'remote-apps-json',
         apply: 'build',
         async load(id) {
