@@ -1,0 +1,82 @@
+name: Publish static build to npm (unpkg)
+
+# Builds the STATIC=true version of the site and publishes it as every package
+# in PACKAGES below. unpkg then serves it at https://unpkg.com/<name>/index.html
+# (and index.svg). Needs an NPM_TOKEN repo secret (granular token, read/write,
+# "bypass 2FA" enabled).
+
+on:
+  push:
+    branches: ["prod"]
+    paths-ignore:
+      - "**.md"
+      - ".github/FUNDING.yml"
+      - ".github/workflows/docker-image.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: publish-npm
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Space-separated list of npm package names to publish identical builds to.
+  PACKAGES: "unblocking educationate"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # package-lock.json is gitignored in this repo, so npm ci is not an option.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build (static)
+        run: npm run build
+        env:
+          STATIC: "true"
+
+      - name: Check build output
+        run: |
+          test -f dist/index.html
+          test -f dist/index.svg
+
+      # Version is 1.0.<run number>: always increasing, so npm never sees a duplicate.
+      - name: Publish packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: 1.0.${{ github.run_number }}
+        run: |
+          set -e
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::NPM_TOKEN secret is not set"; exit 1
+          fi
+          for name in $PACKAGES; do
+            echo "::group::Publishing $name@$VERSION"
+            rm -rf "$RUNNER_TEMP/pkg"
+            mkdir -p "$RUNNER_TEMP/pkg"
+            cp -r dist/. "$RUNNER_TEMP/pkg/"
+            NAME="$name" node -e '
+              require("fs").writeFileSync(process.env.RUNNER_TEMP + "/pkg/package.json", JSON.stringify({
+                name: process.env.NAME,
+                version: process.env.VERSION,
+                description: "Static build served via unpkg",
+                license: "MIT",
+                files: ["**/*"]
+              }, null, 2));
+            '
+            (cd "$RUNNER_TEMP/pkg" && npm publish --access public)
+            echo "::endgroup::"
+          done
+          echo "Published $VERSION. New versions may stay in npm validation for a few minutes before unpkg serves them."
