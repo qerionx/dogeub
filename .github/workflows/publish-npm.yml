@@ -1,10 +1,5 @@
 name: Publish static build to npm (unpkg)
 
-# Builds the STATIC=true version of the site and publishes it as every package
-# in PACKAGES below. unpkg then serves it at https://unpkg.com/<name>/index.html
-# (and index.svg). Needs an NPM_TOKEN repo secret (granular token, read/write,
-# "bypass 2FA" enabled).
-
 on:
   push:
     branches: ["prod"]
@@ -22,7 +17,6 @@ permissions:
   contents: read
 
 env:
-  # Space-separated list of npm package names to publish identical builds to.
   PACKAGES: "unblocking educationate"
 
 jobs:
@@ -38,7 +32,6 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
 
-      # package-lock.json is gitignored in this repo, so npm ci is not an option.
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
@@ -52,7 +45,6 @@ jobs:
           test -f dist/index.html
           test -f dist/index.svg
 
-      # Version is 1.0.<run number>: always increasing, so npm never sees a duplicate.
       - name: Publish packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -79,4 +71,4 @@ jobs:
             (cd "$RUNNER_TEMP/pkg" && npm publish --access public)
             echo "::endgroup::"
           done
-          echo "Published $VERSION. New versions may stay in npm validation for a few minutes before unpkg serves them."
+          echo "Published $VERSION. New versions may stay in npm validation for a few minutes before unpkg serves it."

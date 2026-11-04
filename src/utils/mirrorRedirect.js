@@ -1,59 +1,67 @@
-/* global isStaticBuild */
-// Mirror failover for the static build.
-//
-// When the static build is opened from storage.googleapis.com (or a
-// *.storage.googleapis.com host), check whether the mirrors below are reachable
-// from the user's network. The first reachable one, in priority order, becomes
-// a redirect target. If every mirror is blocked the user stays on the current
-// page. Either outcome is saved in localStorage for a week, so the probe does
-// not run on every reload.
-
 const MIRRORS = [
-  'https://unpkg.com/unblocking/index.html',
-  'https://cdn.jsdelivr.net/gh/dogeub/-/index.svg',
-  'https://unpkg.com/educationate/index.html',
+  { id: 'u1', url: 'https://unpkg.com/unblocking/index.html' },
+  { id: 'j1', url: 'https://cdn.jsdelivr.net/gh/dogeub/-/index.svg' },
+  { id: 'u2', url: 'https://unpkg.com/educationate/index.html' },
 ];
 
+const ASSET_CHECKS = ['sw.js', 's_sw.js', 'loadersw.js'];
+
 const STORAGE_KEY = 'mirrorCheck';
-const TTL_MS = 7 * 24 * 60 * 60 * 1000; // expires weekly
-const PROBE_TIMEOUT_MS = 4000;
+const TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const FETCH_TIMEOUT_MS = 4000;
+const RENDER_TIMEOUT_MS = 8000;
 
 const isGoogleStorageHost = (hostname) =>
   hostname === 'storage.googleapis.com' || hostname.endsWith('.storage.googleapis.com');
 
-const readCache = () => {
+const loadCache = () => {
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (!raw || typeof raw.ts !== 'number') return null;
-    if (Date.now() - raw.ts > TTL_MS || raw.ts > Date.now()) return null;
-    if (raw.target !== null && !MIRRORS.includes(raw.target)) return null;
-    return raw;
+    if (raw && typeof raw === 'object') {
+      return { ts: raw.ts, target: raw.target, bad: raw.bad || {} };
+    }
   } catch {
-    return null;
+    return { ts: 0, target: undefined, bad: {} };
   }
+  return { ts: 0, target: undefined, bad: {} };
 };
 
-const writeCache = (target) => {
+const saveCache = (cache) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ target, ts: Date.now() }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
   } catch {
-    // storage unavailable: the check just runs again next load
+    return false;
   }
+  return true;
 };
 
-// A mirror counts as reachable only if the request succeeds AND the body is the
-// real app. Firewall block pages that answer 200 with their own HTML are rejected.
-const probe = async (url) => {
+const fresh = (ts) => typeof ts === 'number' && ts <= Date.now() && Date.now() - ts < TTL_MS;
+
+const freshBad = (cache) => {
+  const out = {};
+  for (const [id, ts] of Object.entries(cache.bad)) {
+    if (MIRRORS.some((m) => m.id === id) && fresh(ts)) out[id] = ts;
+  }
+  return out;
+};
+
+const fetchText = async (url, signal) => {
+  const res = await fetch(url, { cache: 'no-store', credentials: 'omit', signal });
+  if (!res.ok) return null;
+  return { text: await res.text(), type: res.headers.get('content-type') || '' };
+};
+
+const checkChain = async (mirror) => {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
-      cache: 'no-store',
-      credentials: 'omit',
-      signal: controller.signal,
-    });
-    if (!res.ok) return false;
-    return (await res.text()).includes('id="root"');
+    const base = mirror.url.slice(0, mirror.url.lastIndexOf('/') + 1);
+    const [page, ...assets] = await Promise.all([
+      fetchText(mirror.url, controller.signal),
+      ...ASSET_CHECKS.map((name) => fetchText(base + name, controller.signal)),
+    ]);
+    if (!page || !page.text.includes('id="root"')) return false;
+    return assets.every((a) => a && /javascript/i.test(a.type) && a.text.length > 20);
   } catch {
     return false;
   } finally {
@@ -61,25 +69,131 @@ const probe = async (url) => {
   }
 };
 
-// Resolves to the redirect URL (the page is navigating) or null (stay here).
+const randomToken = () => {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+};
+
+const checkRender = (mirror, cleanups) =>
+  new Promise((resolve) => {
+    const token = randomToken();
+    const origin = new URL(mirror.url).origin;
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.tabIndex = -1;
+    iframe.style.cssText =
+      'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;visibility:hidden';
+
+    let done = false;
+    let timer;
+    const finish = (ok) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      window.removeEventListener('message', onMessage);
+      iframe.remove();
+      resolve(ok);
+    };
+    const onMessage = (e) => {
+      const d = e.data;
+      if (
+        e.source === iframe.contentWindow &&
+        e.origin === origin &&
+        d &&
+        d.type === 'mirror-ready' &&
+        d.token === token
+      ) {
+        finish(true);
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    timer = setTimeout(() => finish(false), RENDER_TIMEOUT_MS);
+    cleanups.push(() => finish(false));
+    iframe.src = `${mirror.url}?mirrorProbe=${token}&mid=${mirror.id}`;
+    (document.body || document.documentElement).appendChild(iframe);
+  });
+
+const pickMirror = async (candidates) => {
+  const cleanups = [];
+  const probes = candidates.map((mirror) =>
+    checkChain(mirror)
+      .then((ok) => (ok ? checkRender(mirror, cleanups) : false))
+      .catch(() => false),
+  );
+  let picked = null;
+  for (let i = 0; i < candidates.length; i++) {
+    if (await probes[i]) {
+      picked = candidates[i];
+      break;
+    }
+  }
+  cleanups.forEach((stop) => stop());
+  return picked;
+};
+
 export async function mirrorRedirect() {
   if (typeof isStaticBuild === 'undefined' || !isStaticBuild) return null;
   if (!isGoogleStorageHost(location.hostname)) return null;
 
-  const cached = readCache();
-  let target;
-  if (cached) {
-    target = cached.target;
-  } else {
-    // Probe all mirrors at once but honour priority order: take the first
-    // mirror in the list that is reachable.
-    const results = await Promise.all(MIRRORS.map(probe));
-    const idx = results.indexOf(true);
-    target = idx === -1 ? null : MIRRORS[idx];
-    writeCache(target);
+  const cache = loadCache();
+
+  const params = new URLSearchParams(location.search);
+  const failedId = params.get('mirrorFailed');
+  if (failedId !== null) {
+    if (MIRRORS.some((m) => m.id === failedId)) {
+      cache.bad[failedId] = Date.now();
+      cache.ts = 0;
+    }
+    params.delete('mirrorFailed');
+    const qs = params.toString();
+    try {
+      history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+    } catch {
+      params.delete('mirrorFailed');
+    }
   }
 
-  if (!target) return null;
-  location.replace(target + location.hash);
-  return target;
+  const bad = freshBad(cache);
+  let targetId;
+  if (fresh(cache.ts) && (cache.target === null || MIRRORS.some((m) => m.id === cache.target))) {
+    targetId = cache.target;
+    if (targetId && bad[targetId]) targetId = undefined;
+  }
+  if (targetId === undefined) {
+    const picked = await pickMirror(MIRRORS.filter((m) => !bad[m.id]));
+    targetId = picked ? picked.id : null;
+    saveCache({ ts: Date.now(), target: targetId, bad });
+  }
+
+  const mirror = MIRRORS.find((m) => m.id === targetId);
+  if (!mirror) return null;
+  const from = encodeURIComponent(location.origin + location.pathname);
+  location.replace(`${mirror.url}?from=${from}&mid=${mirror.id}${location.hash}`);
+  return mirror.url;
+}
+
+const waitForMount = async (timeoutMs = 20000) => {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const root = document.getElementById('root');
+    if (root && root.childElementCount > 0) return true;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return false;
+};
+
+export async function signalMirrorReady() {
+  try {
+    if (typeof isStaticBuild === 'undefined' || !isStaticBuild) return;
+    if (!(await waitForMount())) return;
+    if (typeof window.__mirrorBooted === 'function') window.__mirrorBooted();
+    const token = new URLSearchParams(location.search).get('mirrorProbe');
+    if (token && /^[a-z0-9]{8,64}$/i.test(token) && window.parent !== window) {
+      window.parent.postMessage({ type: 'mirror-ready', token }, '*');
+    }
+  } catch {
+    return;
+  }
 }

@@ -2,7 +2,7 @@ import { defineConfig, normalizePath } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, rmSync } from 'node:fs';
-import { transform } from 'esbuild';
+import { transform, transformSync } from 'esbuild';
 import { relative } from 'node:path';
 import react from '@vitejs/plugin-react-swc';
 import vitePluginBundleObfuscator from 'vite-plugin-bundle-obfuscator';
@@ -21,6 +21,13 @@ dotenv.config();
 const useBare = process.env.BARE === 'true';
 const isStatic = process.env.STATIC === 'true';
 const gaMeasurementId = 'G-HWLK0PZVBM';
+const mirrorWatchdog = transformSync(
+  readFileSync(
+    resolve(dirname(fileURLToPath(import.meta.url)), 'src/utils/mirrorWatchdog.inline.js'),
+    'utf8',
+  ),
+  { minify: true, legalComments: 'none' },
+).code.trim();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 logging.set_level(logging.NONE);
@@ -191,7 +198,8 @@ body {
 }
       ]]></style>
       <script><![CDATA[
-${escapeCdata(`${svgDomShim}
+${escapeCdata(`${mirrorWatchdog}
+${svgDomShim}
 ${headBootstrap}`)}
       ]]></script>
     </body>
@@ -459,6 +467,13 @@ export default defineConfig(({ command }) => {
               next();
             }
           });
+        },
+      },
+      isStatic && {
+        name: 'mirror-watchdog-html',
+        transformIndexHtml: {
+          order: 'pre',
+          handler: () => [{ tag: 'script', children: mirrorWatchdog, injectTo: 'head-prepend' }],
         },
       },
       isStatic && {
