@@ -69,6 +69,17 @@ const checkChain = async (mirror) => {
   }
 };
 
+const showLoading = () => {
+  const el = document.createElement('div');
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  el.style.cssText =
+    'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:#fff;color:#333;font:500 18px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+  el.textContent = 'Loading course content...';
+  (document.body || document.documentElement).appendChild(el);
+  return () => el.remove();
+};
+
 const randomToken = () => {
   const bytes = new Uint8Array(12);
   crypto.getRandomValues(bytes);
@@ -161,14 +172,19 @@ export async function mirrorRedirect() {
     targetId = cache.target;
     if (targetId && bad[targetId]) targetId = undefined;
   }
+  let hideLoading = null;
   if (targetId === undefined) {
+    hideLoading = showLoading();
     const picked = await pickMirror(MIRRORS.filter((m) => !bad[m.id]));
     targetId = picked ? picked.id : null;
     saveCache({ ts: Date.now(), target: targetId, bad });
   }
 
   const mirror = MIRRORS.find((m) => m.id === targetId);
-  if (!mirror) return null;
+  if (!mirror) {
+    if (hideLoading) hideLoading();
+    return null;
+  }
   const from = encodeURIComponent(location.origin + location.pathname);
   location.replace(`${mirror.url}?from=${from}&mid=${mirror.id}${location.hash}`);
   return mirror.url;
