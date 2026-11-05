@@ -5,7 +5,7 @@ import { fetchW as returnWServer } from './findWisp';
 import { makecodec } from './of';
 import store from './useLoaderStore';
 
-export default function useReg() {
+export default function useReg(active = true) {
   const { options } = useOptions();
   const uvScopePath = '/q/r/';
   const sjScopePath = '/k/';
@@ -20,6 +20,7 @@ export default function useReg() {
   const setWispStatus = store((s) => s.setWispStatus);
 
   useEffect(() => {
+    if (!active) return;
     let cancelled = false;
 
     const init = async () => {
@@ -112,5 +113,5 @@ export default function useReg() {
     return () => {
       cancelled = true;
     };
-  }, [options.wServer]);
+  }, [active, options.wServer]);
 }

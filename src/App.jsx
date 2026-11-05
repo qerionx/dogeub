@@ -31,6 +31,20 @@ initPreload('/docs', importGms);
 initPreload('/settings', importSettings);
 initPreload('/', importHome);
 
+const PROXY_ROUTE = /^\/(search|docs\/r)(\/|$)|(^|\/)(k|q\/r)\//;
+
+function useProxyActive() {
+  const location = useLocation();
+  const [seen, setSeen] = useState(false);
+  const active = !isStaticBuild || seen || PROXY_ROUTE.test(location.pathname);
+
+  useEffect(() => {
+    if (active && !seen) setSeen(true);
+  }, [active, seen]);
+
+  return active;
+}
+
 function useTracking() {
   const location = useLocation();
 
@@ -44,7 +58,7 @@ const ThemedApp = memo(() => {
   const popunderEnabled = POPUNDER_ENABLED === 'true';
   const adKeyPassed = usePopunderStore((state) => state.adKeyPassed);
   const setAdKeyPassed = usePopunderStore((state) => state.setAdKeyPassed);
-  useReg();
+  useReg(useProxyActive());
   useTracking();
 
   useEffect(() => {
