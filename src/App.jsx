@@ -82,10 +82,16 @@ const ThemedApp = memo(() => {
     const timeout = setTimeout(() => controller.abort(), 3000);
 
     try {
-      const response = await fetch(`/?_connectivity=${Date.now()}`, {
-        cache: 'no-store',
-        signal: controller.signal,
-      });
+      const response = isStaticBuild
+        ? await fetch(new URL('./index.html', window.location.href).href, {
+            method: 'HEAD',
+            cache: 'no-store',
+            signal: controller.signal,
+          })
+        : await fetch(`/?_connectivity=${Date.now()}`, {
+            cache: 'no-store',
+            signal: controller.signal,
+          });
       setIsOffline(!response.ok);
     } catch {
       setIsOffline(true);
