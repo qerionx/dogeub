@@ -215,7 +215,7 @@ const ThemedApp = memo(() => {
   return (
     <>
       {showOfflineHub ? <OfflineHub /> : <Routing pages={pages} />}
-      {!showOfflineHub && popunderEnabled && !adKeyPassed ? <Popunder /> : null}
+      {!isOffline && popunderEnabled && !adKeyPassed ? <Popunder /> : null}
       <style>{backgroundStyle}</style>
     </>
   );
