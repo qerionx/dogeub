@@ -4,6 +4,7 @@ import StaticError from './viewer/StaticError';
 import { useOptions } from '/src/utils/optionsContext';
 import { useRef, useEffect } from 'react';
 import { Loader } from 'lucide-react';
+import { createRetryTracker } from '/src/utils/hooks/loader/bootLogic';
 
 import NewTab from './NewTab';
 
@@ -17,14 +18,19 @@ const Viewer = ({ conf = {} }) => {
   // wispStatus: reps. if working Wisp server is found
   // (only when isStaticBuild == true)
   const wispStatus = loaderStore((state) => state.wispStatus);
+  const runtimeReady = loaderStore((state) => state.runtimeReady);
   const { iframeUrls, iframeReloads, setIframeUrl, showMenu, toggleMenu } = loaderStore();
   const frameRefs = useRef({});
   const prevURL = useRef({});
   const prevTitle = useRef({});
+  const retries = useRef(null);
+  if (!retries.current) retries.current = createRetryTracker();
   const { options } = useOptions();
   const updateActiveFrameRef = loaderStore((state) => state.updateActiveFrameRef);
   const activeFrameRef = loaderStore((state) => state.activeFrameRef);
   const enableAlerts = conf.alerts ?? true;
+
+  useEffect(() => () => retries.current.dispose(), []);
 
   useEffect(() => {
     setFrameRefs(frameRefs);
@@ -36,6 +42,11 @@ const Viewer = ({ conf = {} }) => {
 
   useEffect(() => {
     const listeners = [];
+    const retryOrGiveUp = (tab) => {
+      const outcome = retries.current.request(tab.id, tab.url, () => reloadIframe(tab.id));
+      if (outcome === 'scheduled') setLoading(tab.id, true);
+      else if (outcome === 'exhausted') setLoading(tab.id, false);
+    };
     tabs.forEach((tab) => {
       if (tab.url === 'tabs://new') return;
       const iframe = frameRefs.current[tab.id];
@@ -45,10 +56,10 @@ const Viewer = ({ conf = {} }) => {
         try {
           const d = iframe.contentWindow?.document;
           if (d?.getElementById('errorTrace-wrapper') || d?.getElementById('uvHostname')) {
-            setLoading(tab.id, true);
-            reloadIframe(tab.id);
+            retryOrGiveUp(tab);
             return;
           }
+          retries.current.succeeded(tab.id);
           if (!enableAlerts && iframe.contentWindow) {
             iframe.contentWindow.alert = () => {};
           }
@@ -94,8 +105,7 @@ const Viewer = ({ conf = {} }) => {
           if (curURL === 'about:blank') return;
           const d = iframe.contentWindow?.document;
           if (d?.getElementById('errorTrace-wrapper') || d?.getElementById('uvHostname')) {
-            setLoading(tab.id, true);
-            reloadIframe(tab.id);
+            retryOrGiveUp(tab);
             return;
           }
           if (!enableAlerts && iframe.contentWindow) {
@@ -199,13 +209,15 @@ const Viewer = ({ conf = {} }) => {
             {/* if not static, show frame. otherwise if wisp is found (and is static) show iframe,
             otherwise display error msg */}
             {!isStaticBuild ? (
-              <iframe
-                ref={(el) => (frameRefs.current[id] = el)}
-                key={`${id}:${iframeReloads[id] || 0}`}
-                src={url}
-                style={{ display: 'block', width: '100%', height: '100%' }}
-                className="absolute inset-0 w-full h-full transition-opacity duration-200"
-              />
+              runtimeReady && (
+                <iframe
+                  ref={(el) => (frameRefs.current[id] = el)}
+                  key={`${id}:${iframeReloads[id] || 0}`}
+                  src={url}
+                  style={{ display: 'block', width: '100%', height: '100%' }}
+                  className="absolute inset-0 w-full h-full transition-opacity duration-200"
+                />
+              )
             ) : (
               wispStatus === true && (
                 <iframe

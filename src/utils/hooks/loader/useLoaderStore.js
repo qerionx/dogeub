@@ -23,6 +23,10 @@ const store = create((set) => ({
   //only used if isStaticBuild == true
   wispStatus: null,
   setWispStatus: (bool) => set({ wispStatus: bool }),
+  runtimeReady: false,
+  setRuntimeReady: (v) => set({ runtimeReady: v }),
+  warm: false,
+  requestWarm: () => set({ warm: true }),
   toggleUI: () => set((state) => ({ showUI: !state.showUI })),
   setZoom: (tabId, zoom, frameRef) => {
     const ifr = frameRef?.current;

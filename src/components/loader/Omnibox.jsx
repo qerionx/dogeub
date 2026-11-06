@@ -15,6 +15,7 @@ import loaderStore from '/src/utils/hooks/loader/useLoaderStore';
 import { process, openEmbed } from '/src/utils/hooks/loader/utils';
 import { useOptions } from '/src/utils/optionsContext';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { warmProxy } from '/src/utils/hooks/loader/warm';
 
 const Action = ({ Icon, size = 15, action = () => alert('nothing here yet'), disabled = false }) => {
   const { options } = useOptions();
@@ -131,7 +132,10 @@ const Omnibox = () => {
           onBlur={() => updateIcon(iframeUrls[activeTab?.id])}
           value={input}
           ref={inputRef}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            e.target.value.trim() && warmProxy();
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && activeTab && input.length !== 0) {
               const processedUrl = process(input, false, options.prType || 'auto', options.engine || undefined);

@@ -6,6 +6,7 @@ import { Plus, Bolt, Globe, Pencil, Trash2, CircleX } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import LinkDialog from './NewQuickLink';
 import EditLinkDialog from './EditQuickLink';
+import { warmProxy } from '../utils/hooks/loader/warm';
 
 const QuickLinks = ({ cls, nav = true, navigating }) => {
   const { options, updateOption } = useOptions();
@@ -72,7 +73,7 @@ const QuickLinks = ({ cls, nav = true, navigating }) => {
   return (
     <div className={clsx('flex flex-wrap justify-center gap-4', cls || 'w-full max-w-160 mx-auto mt-64')}>
       {quickLinks.map((link, i) => (
-        <div key={i} className={linkItem} onClick={() => go(link.link)}>
+        <div key={i} className={linkItem} onPointerDown={warmProxy} onClick={() => go(link.link)}>
           <div
             ref={menuOpen === i ? menuRef : null}
             onClick={(e) => {
