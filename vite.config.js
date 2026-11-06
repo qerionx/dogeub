@@ -275,8 +275,8 @@ export default defineConfig(({ command }) => {
             src: [normalizePath(resolve(scramjetPath, 'scramjet.all.js'))],
             dest: PATH_OBF.eggsDir,
             rename: PATH_OBF.sjAll,
-          },
             transform: (content) => patchScramjet(content),
+          },
           {
             src: [normalizePath(resolve(scramjetPath, 'scramjet.sync.js'))],
             dest: PATH_OBF.eggsDir,
