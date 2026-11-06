@@ -1,0 +1,327 @@
+{
+ "note": "raw per-load results, format: <load ms>/<resources>/<chars of text in page body at load event>. FAIL = no load event within 20s or proxy error page. 3 loads per cell (first, then two repeats); sj discord/twitch had 1 load in round 2.",
+ "baseline": {
+  "round1": {
+   "uv www.google.com": [
+    "995ms/22r/155c",
+    "339ms/22r/155c",
+    "253ms/23r/155c"
+   ],
+   "sj www.google.com": [
+    "558ms/17r/212c",
+    "352ms/18r/212c",
+    "292ms/16r/200c"
+   ],
+   "uv en.wikipedia.org": [
+    "507ms/24r/20413c",
+    "400ms/28r/20413c",
+    "357ms/26r/20413c"
+   ],
+   "sj en.wikipedia.org": [
+    "FAIL 20003ms/0r/29333c",
+    "351ms/25r/20413c",
+    "360ms/29r/20413c"
+   ],
+   "uv github.com": [
+    "1154ms/176r/3559c",
+    "275ms/151r/3559c",
+    "260ms/151r/3559c"
+   ],
+   "sj github.com": [
+    "1631ms/165r/3460c",
+    "494ms/140r/3584c",
+    "473ms/140r/3584c"
+   ],
+   "uv www.reddit.com": [
+    "2384ms/57r/2038c",
+    "1541ms/49r/2014c",
+    "1451ms/49r/2392c"
+   ],
+   "sj www.reddit.com": [
+    "1750ms/50r/1831c",
+    "1254ms/45r/1618c",
+    "1409ms/47r/2030c"
+   ],
+   "uv www.youtube.com": [
+    "3935ms/21r/0c",
+    "2683ms/21r/0c",
+    "516ms/21r/0c"
+   ],
+   "sj www.youtube.com": [
+    "5225ms/23r/10c",
+    "672ms/18r/10c",
+    "630ms/18r/10c"
+   ],
+   "uv discord.com": [
+    "2696ms/114r/2128c",
+    "689ms/119r/2128c",
+    "609ms/117r/2128c"
+   ],
+   "sj discord.com": [
+    "FAIL 20001ms/93r/2129c",
+    "FAIL 20001ms/93r/2129c",
+    "FAIL 20001ms/93r/2129c"
+   ],
+   "uv www.twitch.tv": [
+    "4396ms/165r/1877c",
+    "2805ms/152r/1867c",
+    "2108ms/147r/1868c"
+   ],
+   "sj www.twitch.tv": [
+    "FAIL 20001ms/210r/1881c",
+    "FAIL 20000ms/200r/1898c",
+    "FAIL 20001ms/186r/2097c"
+   ],
+   "uv news.ycombinator.com": [
+    "470ms/9r/4105c",
+    "136ms/9r/4105c",
+    "130ms/9r/4105c"
+   ],
+   "sj news.ycombinator.com": [
+    "254ms/5r/4105c",
+    "160ms/5r/4105c",
+    "234ms/5r/4105c"
+   ]
+  },
+  "round2": {
+   "uv www.google.com": [
+    "966ms/24r/155c",
+    "408ms/23r/155c",
+    "279ms/24r/155c"
+   ],
+   "sj www.google.com": [
+    "614ms/19r/155c",
+    "420ms/20r/155c",
+    "296ms/21r/155c"
+   ],
+   "uv en.wikipedia.org": [
+    "483ms/26r/20413c",
+    "330ms/26r/20413c",
+    "326ms/26r/20413c"
+   ],
+   "sj en.wikipedia.org": [
+    "FAIL 20002ms/0r/29333c",
+    "303ms/25r/20413c",
+    "313ms/25r/20413c"
+   ],
+   "uv github.com": [
+    "1108ms/178r/3567c",
+    "305ms/166r/3565c",
+    "283ms/153r/3565c"
+   ],
+   "sj github.com": [
+    "1574ms/165r/3416c",
+    "520ms/164r/3408c",
+    "620ms/164r/3545c"
+   ],
+   "uv www.reddit.com": [
+    "2578ms/57r/2166c",
+    "1559ms/54r/2860c",
+    "1654ms/53r/2772c"
+   ],
+   "sj www.reddit.com": [
+    "1897ms/65r/1432c",
+    "1404ms/65r/473c",
+    "1252ms/56r/1364c"
+   ],
+   "uv www.youtube.com": [
+    "4184ms/31r/151c",
+    "2962ms/22r/0c",
+    "550ms/22r/0c"
+   ],
+   "sj www.youtube.com": [
+    "5277ms/33r/74c",
+    "724ms/22r/10c",
+    "824ms/32r/74c"
+   ],
+   "uv discord.com": [
+    "2236ms/119r/2128c",
+    "590ms/115r/2128c",
+    "595ms/116r/2128c"
+   ],
+   "sj discord.com": [
+    "FAIL 20001ms/93r/2129c"
+   ],
+   "uv www.twitch.tv": [
+    "1957ms/135r/40c",
+    "337ms/135r/40c",
+    "2437ms/160r/1892c"
+   ],
+   "sj www.twitch.tv": [
+    "1514ms/131r/40c"
+   ],
+   "uv news.ycombinator.com": [
+    "491ms/9r/4105c",
+    "140ms/9r/4105c",
+    "134ms/9r/4105c"
+   ],
+   "sj news.ycombinator.com": [
+    "268ms/5r/4105c",
+    "165ms/5r/4105c",
+    "167ms/5r/4105c"
+   ]
+  }
+ },
+ "proxySpeed": {
+  "round1": {
+   "uv www.google.com": [
+    "901ms/22r/155c",
+    "342ms/22r/155c",
+    "359ms/22r/155c"
+   ],
+   "sj www.google.com": [
+    "568ms/19r/155c",
+    "371ms/18r/155c",
+    "282ms/19r/155c"
+   ],
+   "uv en.wikipedia.org": [
+    "664ms/41r/20365c",
+    "254ms/26r/20413c",
+    "271ms/26r/20413c"
+   ],
+   "sj en.wikipedia.org": [
+    "FAIL 20002ms/0r/29333c",
+    "296ms/25r/20413c",
+    "281ms/25r/20413c"
+   ],
+   "uv github.com": [
+    "990ms/176r/3547c",
+    "290ms/154r/3547c",
+    "239ms/154r/3497c"
+   ],
+   "sj github.com": [
+    "1492ms/164r/3320c",
+    "532ms/164r/3312c",
+    "451ms/140r/3435c"
+   ],
+   "uv www.reddit.com": [
+    "1802ms/57r/1636c",
+    "1434ms/48r/1540c",
+    "1243ms/49r/1568c"
+   ],
+   "sj www.reddit.com": [
+    "1640ms/49r/1787c",
+    "1155ms/47r/1809c",
+    "1737ms/55r/2258c"
+   ],
+   "uv www.youtube.com": [
+    "2760ms/22r/0c",
+    "2654ms/22r/0c",
+    "555ms/22r/0c"
+   ],
+   "sj www.youtube.com": [
+    "3948ms/23r/10c",
+    "593ms/18r/10c",
+    "530ms/18r/10c"
+   ],
+   "uv discord.com": [
+    "2488ms/111r/2128c",
+    "596ms/114r/2128c",
+    "519ms/115r/2128c"
+   ],
+   "sj discord.com": [
+    "FAIL 20001ms/94r/2129c",
+    "FAIL 20000ms/93r/2129c",
+    "FAIL 20001ms/94r/2129c"
+   ],
+   "uv www.twitch.tv": [
+    "1495ms/135r/40c",
+    "316ms/135r/40c",
+    "1786ms/126r/1854c"
+   ],
+   "sj www.twitch.tv": [
+    "FAIL 20000ms/199r/1872c",
+    "FAIL 20000ms/188r/2082c",
+    "FAIL 20001ms/143r/2089c"
+   ],
+   "uv news.ycombinator.com": [
+    "468ms/9r/4138c",
+    "131ms/9r/4138c",
+    "122ms/9r/4138c"
+   ],
+   "sj news.ycombinator.com": [
+    "253ms/5r/4138c",
+    "134ms/5r/4138c",
+    "207ms/5r/4138c"
+   ]
+  },
+  "round2": {
+   "uv www.google.com": [
+    "867ms/22r/212c",
+    "337ms/22r/212c",
+    "264ms/25r/212c"
+   ],
+   "sj www.google.com": [
+    "567ms/19r/212c",
+    "386ms/21r/212c",
+    "302ms/22r/212c"
+   ],
+   "uv en.wikipedia.org": [
+    "445ms/26r/20413c",
+    "252ms/24r/20413c",
+    "256ms/24r/20413c"
+   ],
+   "sj en.wikipedia.org": [
+    "FAIL 20001ms/0r/29333c",
+    "276ms/25r/20413c",
+    "260ms/25r/20413c"
+   ],
+   "uv github.com": [
+    "1054ms/178r/3535c",
+    "269ms/153r/3535c",
+    "271ms/153r/3535c"
+   ],
+   "sj github.com": [
+    "1211ms/140r/3411c",
+    "573ms/159r/3411c",
+    "600ms/164r/3546c"
+   ],
+   "uv www.reddit.com": [
+    "1823ms/50r/1749c",
+    "1222ms/44r/1557c",
+    "1301ms/44r/1680c"
+   ],
+   "sj www.reddit.com": [
+    "1568ms/54r/1950c",
+    "1328ms/55r/1126c",
+    "1251ms/38r/1756c"
+   ],
+   "uv www.youtube.com": [
+    "2611ms/20r/0c",
+    "2031ms/20r/0c",
+    "538ms/20r/0c"
+   ],
+   "sj www.youtube.com": [
+    "3897ms/18r/10c",
+    "621ms/18r/10c",
+    "540ms/18r/10c"
+   ],
+   "uv discord.com": [
+    "1703ms/121r/2128c",
+    "517ms/117r/2128c",
+    "587ms/116r/2128c"
+   ],
+   "sj discord.com": [
+    "FAIL 20001ms/93r/2129c"
+   ],
+   "uv www.twitch.tv": [
+    "1278ms/135r/40c",
+    "326ms/135r/40c",
+    "2128ms/113r/1883c"
+   ],
+   "sj www.twitch.tv": [
+    "1086ms/131r/40c"
+   ],
+   "uv news.ycombinator.com": [
+    "503ms/9r/4105c",
+    "118ms/9r/4105c",
+    "132ms/9r/4105c"
+   ],
+   "sj news.ycombinator.com": [
+    "253ms/5r/4105c",
+    "132ms/5r/4105c",
+    "124ms/5r/4105c"
+   ]
+  }
+ }
+}
