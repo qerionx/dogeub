@@ -28,3 +28,5 @@ tools
 
 .env
 package-lock.json
+
+/docs/
