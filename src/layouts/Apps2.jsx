@@ -4,12 +4,17 @@ import { Search, LayoutGrid, ChevronLeft, ChevronRight, Play } from 'lucide-reac
 import { useNavigate } from 'react-router-dom';
 import { useOptions } from '/src/utils/optionsContext';
 import Pagination from '../components/Pagination';
+import { warmProxy, createHoverWarm } from '../utils/hooks/loader/warm';
 import styles from '../styles/apps.module.css';
 import theme from '../styles/theming.module.css';
 import clsx from 'clsx';
 
 const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemStyles }) => {
   const [loaded, setLoaded] = useState(false);
+  const hover = useRef(null);
+  if (!hover.current) hover.current = createHoverWarm();
+  useEffect(() => () => hover.current.leave(), []);
+  const proxied = !app.local && !app.disabled;
   
   return (
     <div
@@ -22,6 +27,9 @@ const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemSt
         app.disabled ? 'disabled cursor-not-allowed' : 'cursor-pointer',
       )}
       onClick={!app.disabled ? () => onClick(app) : undefined}
+      onPointerDown={proxied ? warmProxy : undefined}
+      onPointerEnter={proxied ? hover.current.enter : undefined}
+      onPointerLeave={proxied ? hover.current.leave : undefined}
     >
       <div className="w-20 h-20 rounded-[12px] mb-4 overflow-hidden relative">
         {!loaded && !fallbackMap[app.appName] && (

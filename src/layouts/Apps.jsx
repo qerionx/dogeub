@@ -4,6 +4,7 @@ import { Search, ChevronDown, LayoutGrid } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useOptions } from '/src/utils/optionsContext';
 import Pagination from '../components/Pagination';
+import { warmProxy } from '../utils/hooks/loader/warm';
 import styles from '../styles/apps.module.css';
 import theme from '../styles/theming.module.css';
 import clsx from 'clsx';
@@ -27,6 +28,7 @@ const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemSt
         app.disabled ? 'disabled cursor-not-allowed' : 'cursor-pointer',
       )}
       onClick={!app.disabled ? () => onClick(app) : undefined}
+      onPointerDown={!app.local && !app.disabled ? warmProxy : undefined}
     >
       <div className="w-20 h-20 rounded-[12px] mb-4 overflow-hidden relative">
         {!loaded && !fallbackMap[app.appName] && (

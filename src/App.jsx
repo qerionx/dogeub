@@ -10,6 +10,7 @@ import { OptionsProvider, useOptions } from './utils/optionsContext';
 import { initPreload } from './utils/preload';
 import { designConfig as bgDesign } from './utils/config';
 import useReg from './utils/hooks/loader/useReg';
+import loaderStore from './utils/hooks/loader/useLoaderStore';
 import usePopunderStore from './utils/hooks/popunder/usePopunderStore';
 import { validateAdKey } from './utils/hooks/popunder/validateAdKey';
 import './index.css';
@@ -36,7 +37,8 @@ const PROXY_ROUTE = /^\/(search|docs\/r)(\/|$)|(^|\/)(k|q\/r)\//;
 function useProxyActive() {
   const location = useLocation();
   const [seen, setSeen] = useState(false);
-  const active = !isStaticBuild || seen || PROXY_ROUTE.test(location.pathname);
+  const warm = loaderStore((state) => state.warm);
+  const active = !isStaticBuild || seen || warm || PROXY_ROUTE.test(location.pathname);
 
   useEffect(() => {
     if (active && !seen) setSeen(true);

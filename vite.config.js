@@ -13,6 +13,7 @@ import { bareModulePath } from '@mercuryworkshop/bare-as-module3';
 import { libcurlPath } from '@mercuryworkshop/libcurl-transport';
 import { baremuxPath } from 'bare-mux-fork/node';
 import { scramjetPath } from '@mercuryworkshop/scramjet/path';
+import { patchScramjet } from './scripts/patchScramjet.js';
 import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -275,6 +276,7 @@ export default defineConfig(({ command }) => {
             dest: PATH_OBF.eggsDir,
             rename: PATH_OBF.sjAll,
           },
+            transform: (content) => patchScramjet(content),
           {
             src: [normalizePath(resolve(scramjetPath, 'scramjet.sync.js'))],
             dest: PATH_OBF.eggsDir,

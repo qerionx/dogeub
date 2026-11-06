@@ -13,7 +13,7 @@ function openDB() {
   });
 }
 
-async function loadStored() {
+export async function loadStored() {
   try {
     const db = await openDB();
     return new Promise((resolve) => {
@@ -39,7 +39,7 @@ async function saveStored(url) {
   } catch {}
 }
 
-async function clearStored() {
+export async function clearStored() {
   try {
     const db = await openDB();
     return new Promise((resolve) => {
@@ -51,7 +51,7 @@ async function clearStored() {
   } catch {}
 }
 
-function testURL(url, timeout = 2500) {
+export function testURL(url, timeout = 2500) {
   return new Promise((resolve) => {
     let done = false;
     const finish = (ok) => {
@@ -77,11 +77,16 @@ const acok = [
   'https://cdn.jsdelivr.net/gh/ashxmed/symmetrical-adventure@latest/synapses.js',
   'https://storage.googleapis.com/foigeredu/synapses.js?'+(97+Math.random()*26|0).toString(36)
 ];
+const LIST_TIMEOUT = 2500;
+const listSignal = () =>
+  typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+    ? AbortSignal.timeout(LIST_TIMEOUT)
+    : undefined;
 const j = async (urls) => {
   const list = Array.isArray(urls) ? urls : [urls];
   for (const url of list) {
     try {
-      const res = await fetch(url, { cache: 'no-store' });
+      const res = await fetch(url, { cache: 'no-store', signal: listSignal() });
       if (!res.ok) throw new Error();
       return res.json();
     } catch {
@@ -100,19 +105,9 @@ async function dc(payload, key) {
   return D.decode(d);
 }
 
-export async function fetchW() {
-  const stored = await loadStored();
-  if (stored) {
-    console.log(`found stored url, testing ${stored}`);
-    const ok = await testURL(stored);
-    if (ok) {
-      console.log(`stored url still works using it - ${stored}`);
-      return stored;
-    }
-    console.warn(`stored url broke or smt so wiping and searching fresh`);
-    await clearStored();
-  }
+export const peekStored = loadStored;
 
+export async function discover() {
   let tx = await j(acok);
   let arr = (await dc(tx, await dc())).split(',').map((u) => `wss://${u}/connection/`);
   console.log(`testing ${arr.length} server(s):`, arr);
@@ -131,9 +126,8 @@ export async function fetchW() {
       const ok = await testURL(url);
       if (ok) {
         console.log(`success - ${url}`);
-        await saveStored(url);
-        console.log(`saved to indexedb`);
         if (!settled) { settled = true; resolve(url); }
+        saveStored(url);
       } else {
         console.warn(`failed / timed out - ${url}`);
         testNext();
@@ -141,4 +135,20 @@ export async function fetchW() {
     }
     testNext();
   });
+}
+
+export async function fetchW() {
+  const stored = await loadStored();
+  if (stored) {
+    console.log(`found stored url, testing ${stored}`);
+    const ok = await testURL(stored);
+    if (ok) {
+      console.log(`stored url still works using it - ${stored}`);
+      return stored;
+    }
+    console.warn(`stored url broke or smt so wiping and searching fresh`);
+    await clearStored();
+  }
+
+  return discover();
 }

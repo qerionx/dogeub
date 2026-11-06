@@ -6,6 +6,7 @@ import { GlowWrapper } from '../utils/Glow';
 import { useOptions } from '../utils/optionsContext';
 import Logo from '../components/Logo';
 import theme from '../styles/theming.module.css';
+import { warmProxy } from '../utils/hooks/loader/warm';
 import 'movement.css';
 
 const SearchContainer = memo(function SearchContainer({ logo = true, cls, nav = true, navigating }) {
@@ -62,6 +63,8 @@ const SearchContainer = memo(function SearchContainer({ logo = true, cls, nav = 
         setResults([]);
         return;
       }
+
+      warmProxy();
 
       debounceRef.current = setTimeout(() => fetchResults(newQuery), 300);
     },
