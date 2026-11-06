@@ -11,7 +11,7 @@ Raw data: `docs/proxy-speed-results.json`.
 
 ## Method
 
-- Same machine, both builds served by Node on localhost: baseline = `HEAD~1` server and dist on `:2346`, new = this branch on `:2345`. Separate origins, so service workers and caches are isolated.
+- Same machine, both builds served by Node on localhost: baseline = the server and dist from `prod` at 398adbc (before 966dcc8) on `:2346`, new = this branch on `:2345`. Separate origins, so service workers and caches are isolated.
 - Each round starts from wiped service workers, Cache Storage, IndexedDB and storage, then a reload so the proxy boots from scratch.
 - Each site is loaded in a hidden 1280x800 iframe through each proxy (`/q/r/` Ultraviolet, `/k/` Scramjet). The time is navigation to the iframe `load` event.
 - 3 loads per cell: the first, then two repeats. Two rounds per build, with the order swapped in round 2 (baseline first, then new; then new first, then baseline).
