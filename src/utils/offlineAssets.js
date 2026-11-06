@@ -17,6 +17,11 @@ const toAbsoluteUrl = (value) => {
   }
 };
 
+export const appAssetUrl = (name) =>
+  isStaticBuild
+    ? new URL(`./${name}`, window.location.href).toString()
+    : new URL(`/${name}`, window.location.origin).toString();
+
 const getGameIdFromUrl = (url) => {
   const firstUrl = Array.isArray(url) ? url[0] : url;
   if (!firstUrl || typeof firstUrl !== 'string') {
@@ -120,7 +125,7 @@ export const warmOfflineVisualAssets = async () => {
     const iconUrls = getDownloadedGameIconUrls(appsModule.default?.games || {}, downloadedIdsSet);
 
     const urlsToCache = new Set([
-      toAbsoluteUrl('/logo.svg'),
+      appAssetUrl('logo.svg'),
       ...iconUrls,
     ]);
 

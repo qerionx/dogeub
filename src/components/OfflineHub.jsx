@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LayoutGrid, Play } from 'lucide-react';
-import { getDownloadedGameIds, getDownloadedPlayableGames } from '/src/utils/offlineAssets';
+import { appAssetUrl, getDownloadedGameIds, getDownloadedPlayableGames } from '/src/utils/offlineAssets';
 
 const OfflineHub = () => {
   const nav = useNavigate();
@@ -55,7 +55,7 @@ const OfflineHub = () => {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center px-6 pt-16 pb-12">
-      <img src="/logo.svg" alt="logo" className="w-72 max-w-[84vw] select-none" draggable="false" />
+      <img src={appAssetUrl('logo.svg')} alt="logo" className="w-72 max-w-[84vw] select-none" draggable="false" />
       <p className="mt-4 text-center text-sm font-semibold">
         You&apos;re offline, but you can still play your downloaded games:
       </p>
