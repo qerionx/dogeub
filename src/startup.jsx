@@ -1,10 +1,11 @@
 import { mirrorRedirect, signalMirrorReady } from './utils/mirrorRedirect';
+import { versionRedirect } from './utils/versionRedirect';
 
 window.addEventListener('vite:preloadError', (event) => {
   if (/Unable to preload CSS/.test(event.payload?.message || '')) event.preventDefault();
 });
 
-if (await mirrorRedirect()) {
+if ((await mirrorRedirect()) || (await versionRedirect())) {
   await new Promise(() => {});
 }
 
