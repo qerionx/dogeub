@@ -36,9 +36,15 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Build (static)
-        run: npm run build
+        run: |
+          if [ -z "$POPUNDER_URL" ]; then
+            echo "::error::POPUNDER_URL secret is not set"; exit 1
+          fi
+          npm run build
         env:
           STATIC: "true"
+          POPUNDER_ENABLED: "true"
+          POPUNDER_URL: ${{ secrets.POPUNDER_URL }}
 
       - name: Check build output
         run: |
