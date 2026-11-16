@@ -12,15 +12,35 @@ const isLoaderWorkerScript = (scriptURL = '') => {
   }
 };
 
+const expectedScope = () => new URL(loaderSwScope(), window.location.href).href;
+
+const withTimeout = (promise, timeoutMs) =>
+  new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      },
+    );
+  });
+
 const getExistingRegistration = async () => {
-  const registrations = await navigator.serviceWorker.getRegistrations();
-  return (
-    registrations.find((registration) =>
-      [registration.active, registration.waiting, registration.installing].some((worker) =>
-        isLoaderWorkerScript(worker?.scriptURL),
-      ),
-    ) || null
-  );
+  const scope = expectedScope();
+  const registration = await navigator.serviceWorker.getRegistration(scope);
+  if (!registration || registration.scope !== scope) {
+    return null;
+  }
+
+  return [registration.active, registration.waiting, registration.installing].some((worker) =>
+    isLoaderWorkerScript(worker?.scriptURL),
+  )
+    ? registration
+    : null;
 };
 
 const waitForActivation = (registration) => {
@@ -77,8 +97,8 @@ export const ensureLoaderServiceWorker = async () => {
     });
   }
 
-  await waitForActivation(registration);
-  await navigator.serviceWorker.ready;
+  await withTimeout(waitForActivation(registration), 10000);
+  await withTimeout(navigator.serviceWorker.ready, 5000);
 
   if (!navigator.serviceWorker.controller) {
     registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
