@@ -3,46 +3,8 @@ import { BareMuxConnection } from 'bare-mux-fork';
 import { useOptions } from '/src/utils/optionsContext';
 import { peekStored, testURL, clearStored, discover } from './findWisp';
 import { READY_TIMEOUT_MS, connectWisp, waitActive, withTimeout } from './bootLogic';
-import { makecodec } from './of';
+import { bootScramjet, setScramjetWisp } from './sj';
 import store from './useLoaderStore';
-
-let scramjetBoot = null;
-
-const startScramjet = (hamPrefix, eggsPath) => {
-  if (scramjetBoot) return scramjetBoot;
-  const run = async () => {
-    if (!window.scr) {
-      const script = document.createElement('script');
-      script.src = eggsPath + 'b.js';
-      await new Promise((resolve, reject) => {
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    }
-
-    const { ScramjetController } = $scramjetLoadController();
-
-    window.scr = new ScramjetController({
-      prefix: hamPrefix,
-      files: {
-        wasm: eggsPath + 'a.w',
-        all: eggsPath + 'b.js',
-        sync: eggsPath + 'c.js',
-      },
-      flags: { rewriterLogs: false, scramitize: false, cleanErrors: true, sourcemaps: true },
-      codec: makecodec()
-    });
-
-    await window.scr.init();
-  };
-  scramjetBoot = run().catch((err) => {
-    scramjetBoot = null;
-    console.warn('Scramjet init err:', err);
-    throw err;
-  });
-  return scramjetBoot;
-};
 
 const registerSw = async (sw) => {
   try {
@@ -80,12 +42,6 @@ export default function useReg(active = true) {
       const libcurlPath = isStaticBuild
         ? new URL('./x/a.mjs', location.href).pathname
         : '/x/a.mjs';
-      const hamPrefix = isStaticBuild
-        ? new URL(`.${sjScopePath}`, location.href).pathname
-        : sjScopePath;
-      const eggsPath = isStaticBuild
-        ? new URL('./z/', location.href).pathname
-        : '/z/';
 
       let activeWisp = null;
 
@@ -100,10 +56,10 @@ export default function useReg(active = true) {
           withTimeout(
             (async () => {
               if (cancelled) return;
-              await connection.setTransport(libcurlPath, [
-                {
-                  wisp: isStaticBuild ? wispUrl : ws,
-                },
+              const target = isStaticBuild ? wispUrl : ws;
+              await Promise.all([
+                connection.setTransport(libcurlPath, [{ wisp: target }]),
+                setScramjetWisp(target),
               ]);
             })().catch((err) => console.warn('setTransport err:', err)),
             READY_TIMEOUT_MS,
@@ -111,10 +67,11 @@ export default function useReg(active = true) {
 
         const uvBranch = registerSw(sws[0]);
 
-        const sjBranch = startScramjet(hamPrefix, eggsPath).then(
-          () => registerSw(sws[1]),
-          () => null,
-        );
+        const sjBranch = registerSw(sws[1]).then(async (reg) => {
+          await waitActive(reg);
+          await bootScramjet(reg).catch((err) => console.warn('Scramjet init err:', err));
+          return reg;
+        });
 
         const transportBranch = (async () => {
           try {

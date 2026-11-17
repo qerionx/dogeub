@@ -19,6 +19,8 @@ export default defineConfig([
         ...globals.browser,
         POPUNDER_ENABLED: 'readonly',
         isStaticBuild: 'readonly',
+        SJ_ASSET_VERSION: 'readonly',
+        $scramjetController: 'readonly',
       },
       parserOptions: {
         ecmaVersion: 'latest',
