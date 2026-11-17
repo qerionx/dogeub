@@ -5,6 +5,9 @@ import { useOptions } from '/src/utils/optionsContext';
 import { useRef, useEffect } from 'react';
 import { Loader } from 'lucide-react';
 import { createRetryTracker } from '/src/utils/hooks/loader/bootLogic';
+import { attachFrame, isProxyErrorPage, sjPrefix, toFrameSrc } from '/src/utils/hooks/loader/sj';
+import { process } from '/src/utils/hooks/loader/utils';
+import { forgetProxyTab, reportProxySite } from '/src/utils/siteStats';
 
 import NewTab from './NewTab';
 
@@ -36,7 +39,10 @@ const Viewer = ({ conf = {} }) => {
     setFrameRefs(frameRefs);
     const tabIds = new Set(tabs.map((t) => t.id));
     Object.keys(frameRefs.current).forEach((id) => {
-      if (!tabIds.has(id)) delete frameRefs.current[id];
+      if (!tabIds.has(id)) {
+        delete frameRefs.current[id];
+        forgetProxyTab(id);
+      }
     });
   }, [setFrameRefs, tabs]);
 
@@ -55,11 +61,16 @@ const Viewer = ({ conf = {} }) => {
         setLoading(tab.id, false);
         try {
           const d = iframe.contentWindow?.document;
-          if (d?.getElementById('errorTrace-wrapper') || d?.getElementById('uvHostname')) {
+          if (d?.getElementById('errorTrace-wrapper') || d?.getElementById('uvHostname') || isProxyErrorPage(d)) {
             retryOrGiveUp(tab);
             return;
           }
           retries.current.succeeded(tab.id);
+          const frameUrl = iframe.contentWindow?.location?.href || '';
+          if (frameUrl && frameUrl !== 'about:blank') {
+            const engine = new URL(frameUrl).pathname.startsWith(sjPrefix()) ? 'scramjet' : 'ultraviolet';
+            reportProxySite(tab.id, process(frameUrl, true), engine);
+          }
           if (!enableAlerts && iframe.contentWindow) {
             iframe.contentWindow.alert = () => {};
           }
@@ -104,7 +115,7 @@ const Viewer = ({ conf = {} }) => {
           const curTTL = iframe.contentWindow.document.title;
           if (curURL === 'about:blank') return;
           const d = iframe.contentWindow?.document;
-          if (d?.getElementById('errorTrace-wrapper') || d?.getElementById('uvHostname')) {
+          if (d?.getElementById('errorTrace-wrapper') || d?.getElementById('uvHostname') || isProxyErrorPage(d)) {
             retryOrGiveUp(tab);
             return;
           }
@@ -211,9 +222,12 @@ const Viewer = ({ conf = {} }) => {
             {!isStaticBuild ? (
               runtimeReady && (
                 <iframe
-                  ref={(el) => (frameRefs.current[id] = el)}
+                  ref={(el) => {
+                    frameRefs.current[id] = el;
+                    attachFrame(el);
+                  }}
                   key={`${id}:${iframeReloads[id] || 0}`}
-                  src={url}
+                  src={toFrameSrc(url)}
                   style={{ display: 'block', width: '100%', height: '100%' }}
                   className="absolute inset-0 w-full h-full transition-opacity duration-200"
                 />
@@ -221,9 +235,12 @@ const Viewer = ({ conf = {} }) => {
             ) : (
               wispStatus === true && (
                 <iframe
-                  ref={(el) => (frameRefs.current[id] = el)}
+                  ref={(el) => {
+                    frameRefs.current[id] = el;
+                    attachFrame(el);
+                  }}
                   key={`${id}:${iframeReloads[id] || 0}`}
-                  src={url}
+                  src={toFrameSrc(url)}
                   style={{ display: 'block', width: '100%', height: '100%' }}
                   className="absolute inset-0 w-full h-full transition-opacity duration-200"
                 />

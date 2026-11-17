@@ -12,8 +12,6 @@ import { createBareServer } from '@tomphttp/bare-server-node';
 import { bareModulePath } from '@mercuryworkshop/bare-as-module3';
 import { libcurlPath } from '@mercuryworkshop/libcurl-transport';
 import { baremuxPath } from 'bare-mux-fork/node';
-import { scramjetPath } from '@mercuryworkshop/scramjet/path';
-import { patchScramjet } from './scripts/patchScramjet.js';
 import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -31,6 +29,17 @@ const mirrorWatchdog = transformSync(
 ).code.trim();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const modDir = (name) => resolve(__dirname, 'node_modules', name);
+const sjDist = resolve(modDir('@mercuryworkshop/scramjet'), 'dist');
+const sjControllerDist = resolve(modDir('@mercuryworkshop/scramjet-controller'), 'dist');
+const libcurlV2Dist = resolve(modDir('libcurl-transport-v2'), 'dist');
+const pkgVersion = (name) => JSON.parse(readFileSync(resolve(modDir(name), 'package.json'), 'utf8')).version;
+const stripSourceMap = (content) => content.replace(/\n\/\/# sourceMappingURL=\S+\s*$/, '');
+const sjAssetVersion = [
+  pkgVersion('@mercuryworkshop/scramjet'),
+  pkgVersion('@mercuryworkshop/scramjet-controller'),
+  pkgVersion('libcurl-transport-v2'),
+].join('-');
 logging.set_level(logging.NONE);
 let bare;
 
@@ -44,9 +53,12 @@ const PATH_OBF = {
   sjPrefix: '/k/',
   libcurlIndex: 'a.mjs',
   baremuxWorker: 'a.js',
+  libcurlV2Index: 'c.mjs',
   sjWasm: 'a.w',
-  sjAll: 'b.js',
-  sjSync: 'c.js',
+  sjRuntime: 'b.js',
+  sjController: 'c.js',
+  sjInject: 'd.js',
+  sjWorker: 'e.js',
   uvHandler: 'a.js',
   uvClient: 'b.js',
   uvBundle: 'c.js',
@@ -267,20 +279,38 @@ export default defineConfig(({ command }) => {
             rename: PATH_OBF.baremuxWorker,
           },
           {
-            src: [normalizePath(resolve(scramjetPath, 'scramjet.wasm.wasm'))],
+            src: [normalizePath(resolve(libcurlV2Dist, 'index.mjs'))],
+            dest: PATH_OBF.libcurlDir,
+            rename: PATH_OBF.libcurlV2Index,
+          },
+          {
+            src: [normalizePath(resolve(sjDist, 'scramjet.wasm'))],
             dest: PATH_OBF.eggsDir,
             rename: PATH_OBF.sjWasm,
           },
           {
-            src: [normalizePath(resolve(scramjetPath, 'scramjet.all.js'))],
+            src: [normalizePath(resolve(sjDist, 'scramjet.js'))],
             dest: PATH_OBF.eggsDir,
-            rename: PATH_OBF.sjAll,
-            transform: (content) => patchScramjet(content),
+            rename: PATH_OBF.sjRuntime,
+            transform: stripSourceMap,
           },
           {
-            src: [normalizePath(resolve(scramjetPath, 'scramjet.sync.js'))],
+            src: [normalizePath(resolve(sjControllerDist, 'controller.api.js'))],
             dest: PATH_OBF.eggsDir,
-            rename: PATH_OBF.sjSync,
+            rename: PATH_OBF.sjController,
+            transform: stripSourceMap,
+          },
+          {
+            src: [normalizePath(resolve(sjControllerDist, 'controller.inject.js'))],
+            dest: PATH_OBF.eggsDir,
+            rename: PATH_OBF.sjInject,
+            transform: stripSourceMap,
+          },
+          {
+            src: [normalizePath(resolve(sjControllerDist, 'controller.sw.js'))],
+            dest: PATH_OBF.eggsDir,
+            rename: PATH_OBF.sjWorker,
+            transform: stripSourceMap,
           },
           useBare && { src: [normalizePath(resolve(bareModulePath, '*'))], dest: 'baremod' },
           {
@@ -560,6 +590,7 @@ export default defineConfig(({ command }) => {
     define: {
       __ENVIRONMENT__: JSON.stringify(environment),
       isStaticBuild: isStatic,
+      SJ_ASSET_VERSION: JSON.stringify(sjAssetVersion),
       POPUNDER_ENABLED: JSON.stringify(process.env.POPUNDER_ENABLED),
       POPUNDER_URL: JSON.stringify(process.env.POPUNDER_URL),
     },

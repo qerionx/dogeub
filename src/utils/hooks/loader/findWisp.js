@@ -4,6 +4,9 @@ const DB_NAME = 'save';
 const DB_STORE = 'w';
 const DB_KEY = 'url';
 
+const LIST_KEY = 'list';
+const LIST_TTL = 6 * 60 * 60 * 1000;
+
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
@@ -13,13 +16,12 @@ function openDB() {
   });
 }
 
-export async function loadStored() {
+async function idbGet(key) {
   try {
     const db = await openDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction(DB_STORE, 'readonly');
-      const req = tx.objectStore(DB_STORE).get(DB_KEY);
-      req.onsuccess = (e) => resolve(e.target.result ? mango.dnc(e.target.result) : null);
+    return await new Promise((resolve) => {
+      const req = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(key);
+      req.onsuccess = (e) => resolve(e.target.result ?? null);
       req.onerror = () => resolve(null);
     });
   } catch {
@@ -27,49 +29,80 @@ export async function loadStored() {
   }
 }
 
-async function saveStored(url) {
+async function idbWrite(run) {
   try {
     const db = await openDB();
-    return new Promise((resolve) => {
+    await new Promise((resolve) => {
       const tx = db.transaction(DB_STORE, 'readwrite');
-      tx.objectStore(DB_STORE).put(mango.enc(url), DB_KEY);
+      run(tx.objectStore(DB_STORE));
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
     });
-  } catch {}
+  } catch {
+    return;
+  }
 }
 
-export async function clearStored() {
-  try {
-    const db = await openDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction(DB_STORE, 'readwrite');
-      tx.objectStore(DB_STORE).delete(DB_KEY);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-    });
-  } catch {}
+const isWispUrl = (url) => typeof url === 'string' && /^wss?:\/\/[^\s]+$/.test(url);
+
+export async function loadStored() {
+  const raw = await idbGet(DB_KEY);
+  const url = raw ? mango.dnc(raw) : null;
+  return isWispUrl(url) ? url : null;
 }
+
+const saveStored = (url) => idbWrite((os) => os.put(mango.enc(url), DB_KEY));
+
+export const clearStored = () => idbWrite((os) => os.delete(DB_KEY));
+
+async function loadList() {
+  const row = await idbGet(LIST_KEY);
+  if (!row || typeof row.t !== 'number' || Date.now() - row.t > LIST_TTL) return null;
+  const urls = toUrls(mango.dnc(row.v));
+  return urls.length && urls.every(isWispUrl) ? urls : null;
+}
+
+const saveList = (csv) => idbWrite((os) => os.put({ t: Date.now(), v: mango.enc(csv) }, LIST_KEY));
+
+const clearList = () => idbWrite((os) => os.delete(LIST_KEY));
+
+const toUrls = (csv) =>
+  String(csv || '')
+    .split(',')
+    .map((u) => u.trim())
+    .filter(Boolean)
+    .map((u) => `wss://${u}/connection/`);
 
 export function testURL(url, timeout = 2500) {
   return new Promise((resolve) => {
     let done = false;
+    let ws = null;
+    let timer = null;
     const finish = (ok) => {
       if (done) return;
       done = true;
       clearTimeout(timer);
-      ws.onopen = ws.onerror = ws.onclose = null;
-      ws.close();
+      if (ws) {
+        ws.onopen = ws.onerror = ws.onclose = null;
+        try {
+          ws.close();
+        } catch {
+          ws = null;
+        }
+      }
       resolve(ok);
     };
-    const ws = new WebSocket(url);
-    const timer = setTimeout(() => {
-      console.warn(`[fetchW] Timed out after ${timeout}ms: ${url}`);
+    try {
+      ws = new WebSocket(url);
+    } catch {
       finish(false);
-    }, timeout);
-    ws.onopen  = () => finish(true);
-    ws.onerror = (e) => { console.error(`onerror on ${url}:`, e); finish(false); };
-    ws.onclose = (e) => { console.warn(`onclose on ${url} - code: ${e.code}, reason: "${e.reason}", wasClean: ${e.wasClean}`); finish(false); };
+      return;
+    }
+    timer = setTimeout(() => finish(false), timeout);
+    ws.onopen = () => finish(true);
+    ws.onerror = () => finish(false);
+    ws.onclose = () => finish(false);
   });
 }
 
@@ -82,19 +115,14 @@ const listSignal = () =>
   typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
     ? AbortSignal.timeout(LIST_TIMEOUT)
     : undefined;
-const j = async (urls) => {
-  const list = Array.isArray(urls) ? urls : [urls];
-  for (const url of list) {
-    try {
+const j = (urls) =>
+  Promise.any(
+    (Array.isArray(urls) ? urls : [urls]).map(async (url) => {
       const res = await fetch(url, { cache: 'no-store', signal: listSignal() });
       if (!res.ok) throw new Error();
       return res.json();
-    } catch {
-      // try next
-    }
-  }
-  throw new Error();
-};
+    }),
+  );
 async function dc(payload, key) {
   const E = new TextEncoder(), D = new TextDecoder(),
     a = [64, 56, 107], b = "*Km", c = "01011", e = "&&";
@@ -107,34 +135,54 @@ async function dc(payload, key) {
 
 export const peekStored = loadStored;
 
-export async function discover() {
-  let tx = await j(acok);
-  let arr = (await dc(tx, await dc())).split(',').map((u) => `wss://${u}/connection/`);
-  console.log(`testing ${arr.length} server(s):`, arr);
-
+function raceServers(urls) {
   return new Promise((resolve) => {
-    let index = 0;
+    let left = urls.length;
     let settled = false;
-    async function testNext() {
-      if (index >= arr.length) {
-        console.warn('all servers didnt work, resolving null');
-        if (!settled) { settled = true; resolve(null); }
-        return;
-      }
-      const url = arr[index++];
-      console.log(`trying server ${index}/${arr.length}: ${url}`);
-      const ok = await testURL(url);
-      if (ok) {
-        console.log(`success - ${url}`);
-        if (!settled) { settled = true; resolve(url); }
-        saveStored(url);
-      } else {
-        console.warn(`failed / timed out - ${url}`);
-        testNext();
-      }
-    }
-    testNext();
+    if (!left) return resolve(null);
+    urls.forEach((url) =>
+      testURL(url).then((ok) => {
+        left -= 1;
+        if (settled) return;
+        if (ok) {
+          settled = true;
+          resolve(url);
+        } else if (left === 0) {
+          settled = true;
+          resolve(null);
+        }
+      }),
+    );
   });
+}
+
+const sameList = (a, b) => a.length === b.length && a.every((u, i) => u === b[i]);
+
+export async function discover() {
+  const cached = await loadList();
+  if (cached) {
+    const hit = await raceServers(cached);
+    if (hit) {
+      saveStored(hit);
+      return hit;
+    }
+    await clearList();
+  }
+
+  let csv;
+  try {
+    csv = await dc(await j(acok), await dc());
+  } catch {
+    return null;
+  }
+  const urls = toUrls(csv);
+  if (!urls.length || (cached && sameList(cached, urls))) return null;
+  const hit = await raceServers(urls);
+  if (hit) {
+    saveStored(hit);
+    saveList(csv);
+  }
+  return hit;
 }
 
 export async function fetchW() {

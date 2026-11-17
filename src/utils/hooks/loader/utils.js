@@ -1,6 +1,6 @@
 import { mango } from './of.js';
-import whitelist from '/src/data/whitelist.json';
-import appsData from '/src/data/apps.json';
+import { decodeSjPath } from './sj.js';
+import uvSites from '/src/data/uvlist.json';
 
 const check = (inp, engine) => {
   const trimmed = inp.trim();
@@ -18,15 +18,20 @@ const check = (inp, engine) => {
   }
 };
 
-const scrwlist = new Set([
-  ...whitelist,
-  ...Object.values(appsData.games || {}).flatMap(cat => 
-    cat.filter(g => g.url && !g.local).map(g => {
-      try { return new URL(g.url.startsWith('http') ? g.url : `https://${g.url}`).hostname.replace(/^www\./, ''); }
-      catch { return null; }
-    }).filter(Boolean)
-  )
-]);
+const uvHosts = new Set(uvSites);
+
+const prefersUv = (url) => {
+  let host;
+  try {
+    host = new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return false;
+  }
+  for (const d of uvHosts) {
+    if (host === d || host.endsWith(`.${d}`)) return true;
+  }
+  return false;
+};
 
 export const process = (input, decode = false, prType, engine = "https://www.google.com/search?q=") => {
   const upwefix = isStaticBuild 
@@ -46,15 +51,13 @@ export const process = (input, decode = false, prType, engine = "https://www.goo
       prefix = eggowaffle;
       break;
     default:
-      const url = check(input, engine);
-      const match = [...scrwlist].some(d => url.includes(d));
-      prefix = match ? eggowaffle : upwefix;
+      prefix = prefersUv(check(input, engine)) ? upwefix : eggowaffle;
   }
 
   if (decode) {
     const uvPart = input.split(upwefix)[1];
     const scrPart = input.split(eggowaffle)[1];
-    const decoded = uvPart ? mango.dnc(uvPart) : scrPart ? mango.dnc(scrPart) : input;
+    const decoded = uvPart ? mango.dnc(uvPart) : scrPart ? decodeSjPath(scrPart) : input;
     return decoded.endsWith('/') ? decoded.slice(0, -1) : decoded;
   } else {
     const final = check(input, engine);
