@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { BareMuxConnection } from 'bare-mux-fork';
 import { useOptions } from '/src/utils/optionsContext';
-import { peekStored, testURL, clearStored, discover } from './findWisp';
+import { peekStored, testURL, clearStored, discover, markBad } from './findWisp';
 import { READY_TIMEOUT_MS, connectWisp, waitActive, withTimeout } from './bootLogic';
-import { bootScramjet, setScramjetWisp } from './sj';
+import { bootScramjet, setScramjetWisp, setWispFailover } from './sj';
 import store from './useLoaderStore';
 
 const registerSw = async (sw) => {
@@ -87,6 +87,14 @@ export default function useReg(active = true) {
                 discover,
                 clearStored,
                 applyTransport,
+              });
+              setWispFailover(async (badWisp) => {
+                if (cancelled || !badWisp) return;
+                await markBad(badWisp);
+                const next = await discover([badWisp]);
+                if (cancelled || !next || next === badWisp) return;
+                activeWisp = next;
+                await applyTransport(next);
               });
             }
           } catch (e) {

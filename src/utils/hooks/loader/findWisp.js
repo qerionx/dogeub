@@ -6,6 +6,8 @@ const DB_KEY = 'url';
 
 const LIST_KEY = 'list';
 const LIST_TTL = 6 * 60 * 60 * 1000;
+const BAD_KEY = 'bad';
+const BAD_TTL = 6 * 60 * 60 * 1000;
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -46,10 +48,35 @@ async function idbWrite(run) {
 
 const isWispUrl = (url) => typeof url === 'string' && /^wss?:\/\/[^\s]+$/.test(url);
 
+async function loadBad() {
+  const row = await idbGet(BAD_KEY);
+  const now = Date.now();
+  const bad = new Set();
+  if (row && typeof row === 'object') {
+    for (const [key, at] of Object.entries(row)) {
+      if (typeof at === 'number' && now - at < BAD_TTL) bad.add(mango.dnc(key));
+    }
+  }
+  return bad;
+}
+
+export async function markBad(url) {
+  if (!isWispUrl(url)) return;
+  const row = (await idbGet(BAD_KEY)) || {};
+  const now = Date.now();
+  const next = {};
+  for (const [key, at] of Object.entries(row)) {
+    if (typeof at === 'number' && now - at < BAD_TTL) next[key] = at;
+  }
+  next[mango.enc(url)] = now;
+  await idbWrite((os) => os.put(next, BAD_KEY));
+}
+
 export async function loadStored() {
   const raw = await idbGet(DB_KEY);
   const url = raw ? mango.dnc(raw) : null;
-  return isWispUrl(url) ? url : null;
+  if (!isWispUrl(url) || (await loadBad()).has(url)) return null;
+  return url;
 }
 
 const saveStored = (url) => idbWrite((os) => os.put(mango.enc(url), DB_KEY));
@@ -158,10 +185,16 @@ function raceServers(urls) {
 
 const sameList = (a, b) => a.length === b.length && a.every((u, i) => u === b[i]);
 
-export async function discover() {
+export async function discover(exclude = []) {
+  const bad = await loadBad();
+  exclude.forEach((url) => bad.add(url));
+  const usable = (urls) => {
+    const good = urls.filter((url) => !bad.has(url));
+    return good.length ? good : urls.filter((url) => !exclude.includes(url));
+  };
   const cached = await loadList();
   if (cached) {
-    const hit = await raceServers(cached);
+    const hit = await raceServers(usable(cached));
     if (hit) {
       saveStored(hit);
       return hit;
@@ -177,7 +210,7 @@ export async function discover() {
   }
   const urls = toUrls(csv);
   if (!urls.length || (cached && sameList(cached, urls))) return null;
-  const hit = await raceServers(urls);
+  const hit = await raceServers(usable(urls));
   if (hit) {
     saveStored(hit);
     saveList(csv);
