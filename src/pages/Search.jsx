@@ -5,52 +5,73 @@ import Menu from '/src/components/loader/Menu';
 import loaderStore from '/src/utils/hooks/loader/useLoaderStore';
 import { process } from '/src/utils/hooks/loader/utils';
 import { useOptions } from '../utils/optionsContext';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+const closeMenuIfOpen = () => {
+  const s = loaderStore.getState();
+  if (s.showMenu) s.toggleMenu();
+};
 
 export default function Loader({ config = {} }) {
   const { url, ui = true, zoom, alerts = false } = config;
   const { options } = useOptions();
-  const tabs = loaderStore((state) => state.tabs);
-  const updateUrl = loaderStore((state) => state.updateUrl);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const stateUrl = location.state?.url;
+  const initialShowTb = useRef(options.showTb ?? true);
+  const mountedRef = useRef(false);
+  const lastHandledRef = useRef(null);
+
   const barStyle = {
     backgroundColor: options.barColor || '#09121e',
   };
 
   useEffect(() => {
-    if (url && tabs.length > 0) {
-      //only 1 tab on initial load so tabs[0]
-      const tab = tabs[0];
-      const processedUrl = process(url, false, options.prType || 'auto', options.engine || null);
+    const store = loaderStore.getState();
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      store.clearStore({ showTb: initialShowTb.current });
+    }
+    const target = url || stateUrl;
+    if (!target) {
+      lastHandledRef.current = null;
+      return;
+    }
+    if (lastHandledRef.current === target) return;
+    lastHandledRef.current = target;
+
+    const freshTabs = loaderStore.getState().tabs;
+    const tab = freshTabs.find((t) => t.active) || freshTabs[0];
+    if (tab) {
+      const processedUrl = process(
+        target,
+        false,
+        options.prType || 'auto',
+        options.engine || undefined,
+      );
       if (processedUrl && tab.url !== processedUrl) {
-        updateUrl(tab.id, processedUrl);
+        loaderStore.getState().updateUrl(tab.id, processedUrl);
       }
     }
-  }, [url, tabs, updateUrl, options.prType]);
-
-  useEffect(() => {
-    loaderStore.getState().clearStore({ showTb: options.showTb ?? true });
-  }, []);
+    if (stateUrl) {
+      navigate('.', { replace: true, state: null });
+    }
+  }, [url, stateUrl, navigate, options.prType, options.engine]);
 
   return (
     <div className="flex flex-col w-full h-screen">
       {ui && (
         <>
-          <div 
-            className="flex flex-col w-full" 
-            style={barStyle}
-            onClick={() => loaderStore.getState().showMenu && loaderStore.getState().toggleMenu()}
-          >
+          <div className="flex flex-col w-full" style={barStyle} onClick={closeMenuIfOpen}>
             <Tabs />
             <Omnibox />
           </div>
           <Menu />
         </>
       )}
-      <div 
-        className="flex-1 w-full"
-        onClick={() => loaderStore.getState().showMenu && loaderStore.getState().toggleMenu()}
-      >
-        <Viewer conf={{ zoom: zoom, alerts: alerts }} />
+      <div className="flex-1 w-full" onClick={closeMenuIfOpen}>
+        <Viewer conf={{ zoom, alerts }} />
       </div>
     </div>
   );

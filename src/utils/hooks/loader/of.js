@@ -1,20 +1,28 @@
-const k = new TextEncoder().encode(
+const te = new TextEncoder();
+const td = new TextDecoder();
+const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
+const HV = new Int8Array(128).fill(-1);
+for (let i = 0; i < 16; i++) {
+  HV['0123456789abcdef'.charCodeAt(i)] = i;
+  HV['0123456789ABCDEF'.charCodeAt(i)] = i;
+}
+
+const k = te.encode(
   btoa(new Date().toISOString().slice(0, 10) + location.host)
     .split('')
     .reverse()
     .join('')
-    // mango
-    .slice(6.7),
+    .slice(6),
 );
 
 export const mango = {
   enc: (s) => {
     if (!s) return s;
     try {
-      const d = new TextEncoder().encode(s),
-        o = new Uint8Array(d.length);
-      for (let i = 0; i < d.length; i++) o[i] = d[i] ^ k[i % 8];
-      return Array.from(o, (b) => b.toString(16).padStart(2, '0')).join('');
+      const d = te.encode(s);
+      let r = '';
+      for (let i = 0; i < d.length; i++) r += HEX[d[i] ^ k[i & 7]];
+      return r;
     } catch {
       return s;
     }
@@ -22,28 +30,35 @@ export const mango = {
   dnc: (s) => {
     if (!s) return s;
     try {
-      const n =
-        Math.min(
-          s.indexOf('?') + 1 || s.length + 1,
-          s.indexOf('#') + 1 || s.length + 1,
-          s.indexOf('&') + 1 || s.length + 1,
-        ) - 1;
+      const n = s.length;
       let h = 0;
-      for (let i = 0; i < n && i < s.length; i++) {
-        const c = s.charCodeAt(i);
-        if (!((c >= 48 && c <= 57) || (c >= 65 && c <= 70) || (c >= 97 && c <= 102))) break;
-        h = i + 1;
+      while (h < n) {
+        const c = s.charCodeAt(h);
+        if (c > 127 || HV[c] < 0) break;
+        h++;
       }
-      if (h < 2 || h % 2) return decodeURIComponent(s);
-      const l = h >> 1,
-        o = new Uint8Array(l);
-      for (let i = 0; i < l; i++) {
-        const x = i << 1;
-        o[i] = parseInt(s[x] + s[x + 1], 16) ^ k[i % 8];
+      if (h < 2 || h & 1) return decodeURIComponent(s);
+      const o = new Uint8Array(h >> 1);
+      for (let i = 0, x = 0; x < h; i++, x += 2) {
+        o[i] = ((HV[s.charCodeAt(x)] << 4) | HV[s.charCodeAt(x + 1)]) ^ k[i & 7];
       }
-      return new TextDecoder().decode(o) + s.slice(h);
+      return td.decode(o) + s.slice(h);
     } catch {
       return decodeURIComponent(s);
     }
   },
+};
+
+export const makeSjCodec = () => {
+  const key = Array.from(k.slice(0, 8));
+  const initRuntime = `const c=globalThis.__dubC||(globalThis.__dubC=(()=>{const hx=Array.from({length:256},(_,i)=>i.toString(16).padStart(2,'0')),hv=new Int8Array(128).fill(-1);for(let i=0;i<16;i++){hv['0123456789abcdef'.charCodeAt(i)]=i;hv['0123456789ABCDEF'.charCodeAt(i)]=i}return{te:new TextEncoder(),td:new TextDecoder(),hx,hv,k:[${key}]}})());`;
+  const encode = new Function(
+    's',
+    `if(!s)return s;${initRuntime}const d=c.te.encode(s),hx=c.hx,k=c.k;let o='';for(let i=0;i<d.length;i++)o+=hx[d[i]^k[i&7]];return o;`,
+  );
+  const decode = new Function(
+    's',
+    `if(!s)return s;${initRuntime}const hv=c.hv,k=c.k,n=s.length;let h=0;while(h<n){const x=s.charCodeAt(h);if(x>127||hv[x]<0)break;h++}if(h<2||h&1){try{return decodeURIComponent(s)}catch{return s}}const o=new Uint8Array(h>>1);for(let i=0,x=0;x<h;i++,x+=2)o[i]=((hv[s.charCodeAt(x)]<<4)|hv[s.charCodeAt(x+1)])^k[i&7];return c.td.decode(o)+s.slice(h);`,
+  );
+  return { encode, decode };
 };

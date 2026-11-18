@@ -8,7 +8,6 @@ import { createRetryTracker } from '/src/utils/hooks/loader/bootLogic';
 import { attachFrame, isProxyErrorPage, sjPrefix, toFrameSrc } from '/src/utils/hooks/loader/sj';
 import { process } from '/src/utils/hooks/loader/utils';
 import { forgetProxyTab, reportProxySite } from '/src/utils/siteStats';
-
 import NewTab from './NewTab';
 
 const Viewer = ({ conf = {} }) => {
@@ -18,19 +17,21 @@ const Viewer = ({ conf = {} }) => {
   const setLoading = loaderStore((state) => state.setLoading);
   const reloadIframe = loaderStore((state) => state.reloadIframe);
   const setFrameRefs = loaderStore((state) => state.setFrameRefs);
-  // wispStatus: reps. if working Wisp server is found
-  // (only when isStaticBuild == true)
   const wispStatus = loaderStore((state) => state.wispStatus);
   const runtimeReady = loaderStore((state) => state.runtimeReady);
-  const { iframeUrls, iframeReloads, setIframeUrl, showMenu, toggleMenu } = loaderStore();
+  const iframeReloads = loaderStore((state) => state.iframeReloads);
+  const setIframeUrl = loaderStore((state) => state.setIframeUrl);
+  const showMenu = loaderStore((state) => state.showMenu);
+  const toggleMenu = loaderStore((state) => state.toggleMenu);
+  const updateActiveFrameRef = loaderStore((state) => state.updateActiveFrameRef);
+  const activeFrameRef = loaderStore((state) => state.activeFrameRef);
+
   const frameRefs = useRef({});
   const prevURL = useRef({});
   const prevTitle = useRef({});
   const retries = useRef(null);
   if (!retries.current) retries.current = createRetryTracker();
   const { options } = useOptions();
-  const updateActiveFrameRef = loaderStore((state) => state.updateActiveFrameRef);
-  const activeFrameRef = loaderStore((state) => state.activeFrameRef);
   const enableAlerts = conf.alerts ?? true;
 
   useEffect(() => () => retries.current.dispose(), []);
@@ -41,6 +42,8 @@ const Viewer = ({ conf = {} }) => {
     Object.keys(frameRefs.current).forEach((id) => {
       if (!tabIds.has(id)) {
         delete frameRefs.current[id];
+        delete prevURL.current[id];
+        delete prevTitle.current[id];
         forgetProxyTab(id);
       }
     });
@@ -53,132 +56,139 @@ const Viewer = ({ conf = {} }) => {
       if (outcome === 'scheduled') setLoading(tab.id, true);
       else if (outcome === 'exhausted') setLoading(tab.id, false);
     };
+
     tabs.forEach((tab) => {
       if (tab.url === 'tabs://new') return;
       const iframe = frameRefs.current[tab.id];
       if (!iframe) return;
+
       const handleLoad = () => {
         setLoading(tab.id, false);
         try {
           const d = iframe.contentWindow?.document;
-          if (d?.getElementById('errorTrace-wrapper') || d?.getElementById('uvHostname') || isProxyErrorPage(d)) {
+          if (
+            d?.getElementById('errorTrace-wrapper') ||
+            d?.getElementById('uvHostname') ||
+            isProxyErrorPage(d)
+          ) {
             retryOrGiveUp(tab);
             return;
           }
           retries.current.succeeded(tab.id);
           const frameUrl = iframe.contentWindow?.location?.href || '';
           if (frameUrl && frameUrl !== 'about:blank') {
-            const engine = new URL(frameUrl).pathname.startsWith(sjPrefix()) ? 'scramjet' : 'ultraviolet';
-            reportProxySite(tab.id, process(frameUrl, true), engine);
+            const engine = new URL(frameUrl).pathname.startsWith(sjPrefix())
+              ? 'scramjet'
+              : 'ultraviolet';
+            const decodedFrameUrl = process(frameUrl, true);
+            reportProxySite(tab.id, decodedFrameUrl, engine);
+            if (frameUrl !== prevURL.current[tab.id]) {
+              prevURL.current[tab.id] = frameUrl;
+              setIframeUrl(tab.id, frameUrl);
+              if (!tab.isLoading && decodedFrameUrl !== process(tab.url, true)) {
+                updateUrl(tab.id, frameUrl);
+                setLoading(tab.id, false);
+              }
+            }
           }
-          if (!enableAlerts && iframe.contentWindow) {
-            iframe.contentWindow.alert = () => {};
-          }
-        } catch {}
-      };
-      const checkState = () => {
-        try {
-          const curURL = iframe.contentWindow.location.href;
-          const curTTL = iframe.contentWindow.document.title;
-          if (curURL === 'about:blank') return;
-          // url shouldnt be updating if tab is still loading...will cause race condition
-          if (!tab.isLoading && curURL !== prevURL.current[tab.id] && curURL !== tab.url) {
-            prevURL.current[tab.id] = curURL;
-            updateUrl(tab.id, curURL);
-          }
+          const curTTL = d?.title;
           if (curTTL && curTTL !== prevTitle.current[tab.id] && curTTL !== tab.title) {
             prevTitle.current[tab.id] = curTTL;
             updateTitle(tab.id, curTTL);
           }
-        } catch (e) {}
-      };
-      iframe.addEventListener('load', handleLoad);
-      iframe.addEventListener('load', checkState);
-      listeners.push({ iframe, handleLoad, checkState, tabId: tab.id });
-      
-      //try to remove it again
-      if (!enableAlerts) {
-        try {
-          if (iframe.contentWindow) {
-            iframe.contentWindow.alert = () => {};
-          }
-        } catch {}
-      }
-    });
-    const interval = setInterval(() => {
-      tabs.forEach((tab) => {
-        if (tab.url === 'tabs://new') return;
-        const iframe = frameRefs.current[tab.id];
-        if (!iframe) return;
-        try {
-          const curURL = iframe.contentWindow.location.href;
-          const curTTL = iframe.contentWindow.document.title;
-          if (curURL === 'about:blank') return;
-          const d = iframe.contentWindow?.document;
-          if (d?.getElementById('errorTrace-wrapper') || d?.getElementById('uvHostname') || isProxyErrorPage(d)) {
-            retryOrGiveUp(tab);
-            return;
-          }
           if (!enableAlerts && iframe.contentWindow) {
             iframe.contentWindow.alert = () => {};
           }
-          // tab cant be loading while URL is being updated
-          if (!tab.isLoading && curURL !== prevURL.current[tab.id] && curURL !== tab.url) {
+        } catch {
+          void 0;
+        }
+      };
+
+      iframe.addEventListener('load', handleLoad);
+      listeners.push({ iframe, handleLoad });
+
+      if (!enableAlerts) {
+        try {
+          if (iframe.contentWindow) iframe.contentWindow.alert = () => {};
+        } catch {
+          void 0;
+        }
+      }
+    });
+
+    const interval = setInterval(() => {
+      for (let i = 0; i < tabs.length; i++) {
+        const tab = tabs[i];
+        if (tab.url === 'tabs://new' || (!tab.active && !tab.isLoading)) continue;
+        const iframe = frameRefs.current[tab.id];
+        if (!iframe) continue;
+        try {
+          const win = iframe.contentWindow;
+          const curURL = win?.location?.href;
+          if (!curURL || curURL === 'about:blank') continue;
+          const d = win?.document;
+          if (
+            d?.getElementById('errorTrace-wrapper') ||
+            d?.getElementById('uvHostname') ||
+            isProxyErrorPage(d)
+          ) {
+            retryOrGiveUp(tab);
+            continue;
+          }
+          if (!enableAlerts && win) win.alert = () => {};
+          if (!tab.isLoading && curURL !== prevURL.current[tab.id]) {
             prevURL.current[tab.id] = curURL;
             setIframeUrl(tab.id, curURL);
           }
+          const curTTL = d?.title;
           if (curTTL && curTTL !== prevTitle.current[tab.id] && curTTL !== tab.title) {
             prevTitle.current[tab.id] = curTTL;
             updateTitle(tab.id, curTTL);
           }
-        } catch (e) {}
-      });
-    }, 50);
+        } catch {
+          void 0;
+        }
+      }
+    }, 200);
+
     return () => {
-      listeners.forEach(({ iframe, handleLoad, checkState }) => {
+      listeners.forEach(({ iframe, handleLoad }) => {
         iframe.removeEventListener('load', handleLoad);
-        iframe.removeEventListener('load', checkState);
       });
       clearInterval(interval);
     };
-  }, [tabs, iframeReloads, setLoading, updateTitle, setIframeUrl, enableAlerts, reloadIframe]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      tabs.forEach((tab) => {
-        if (tab.url === 'tabs://new') return;
-        const iframe = frameRefs.current[tab.id];
-        if (!iframe) return;
-        try {
-          const currentUrl = iframe.contentWindow.location.href;
-          if (currentUrl !== iframeUrls[tab.id]) {
-            setIframeUrl(tab.id, currentUrl);
-          }
-        } catch (e) {}
-      });
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, [tabs, iframeUrls, setIframeUrl]);
+  }, [
+    tabs,
+    iframeReloads,
+    setLoading,
+    updateTitle,
+    updateUrl,
+    setIframeUrl,
+    enableAlerts,
+    reloadIframe,
+  ]);
 
   useEffect(() => {
     if (activeFrameRef?.current) {
       try {
         activeFrameRef.current.contentWindow.document.body.style.zoom = conf.zoom;
-      } catch (e) {}
+      } catch {
+        void 0;
+      }
     }
   }, [activeFrameRef, conf.zoom]);
 
   useEffect(() => {
-    tabs.forEach((tab) => {
-      if (tab.active) {
-        const iframeRef = { current: frameRefs.current[tab.id] };
-        updateActiveFrameRef(iframeRef);
-      }
-    });
-  }, [tabs, iframeReloads]);
+    const activeTab = tabs.find((tab) => tab.active);
+    if (!activeTab) return;
+    const el = frameRefs.current[activeTab.id] || null;
+    if (loaderStore.getState().activeFrameRef?.current !== el) {
+      updateActiveFrameRef({ current: el });
+    }
+  }, [tabs, iframeReloads, updateActiveFrameRef]);
 
   const activeNewTab = tabs.find((tab) => tab.url === 'tabs://new' && tab.active);
+  const canMountFrame = !isStaticBuild ? runtimeReady : wispStatus === true;
 
   return (
     <div className="relative w-full h-full">
@@ -197,12 +207,6 @@ const Viewer = ({ conf = {} }) => {
                 className="absolute inset-0 w-full h-full flex items-center justify-center -z-20"
                 style={{ backgroundColor: options.tabBarColor || '#070e15' }}
               >
-                {/*
-                  If not static build, show loader
-                  If static, show loader when wispStatus == true
-                  If Wisp is still being found (init), show loading
-                  Otherwise show error
-                */}
                 {!isStaticBuild ? (
                   <Loader size={32} className="animate-spin" />
                 ) : wispStatus ? (
@@ -212,42 +216,23 @@ const Viewer = ({ conf = {} }) => {
                       <p className="mt-2">Finding a Wisp server to route your request...</p>
                     )}
                   </div>
-                ) : wispStatus === false && (
-                  <StaticError />
+                ) : (
+                  wispStatus === false && <StaticError />
                 )}
               </div>
             )}
-            {/* if not static, show frame. otherwise if wisp is found (and is static) show iframe,
-            otherwise display error msg */}
-            {!isStaticBuild ? (
-              runtimeReady && (
-                <iframe
-                  ref={(el) => {
-                    frameRefs.current[id] = el;
-                    attachFrame(el);
-                  }}
-                  key={`${id}:${iframeReloads[id] || 0}`}
-                  src={toFrameSrc(url)}
-                  style={{ display: 'block', width: '100%', height: '100%' }}
-                  className="absolute inset-0 w-full h-full transition-opacity duration-200"
-                />
-              )
-            ) : (
-              wispStatus === true && (
-                <iframe
-                  ref={(el) => {
-                    frameRefs.current[id] = el;
-                    attachFrame(el);
-                  }}
-                  key={`${id}:${iframeReloads[id] || 0}`}
-                  src={toFrameSrc(url)}
-                  style={{ display: 'block', width: '100%', height: '100%' }}
-                  className="absolute inset-0 w-full h-full transition-opacity duration-200"
-                />
-              )
+            {canMountFrame && (
+              <iframe
+                ref={(el) => {
+                  frameRefs.current[id] = el;
+                  attachFrame(el);
+                }}
+                key={`${id}:${iframeReloads[id] || 0}`}
+                src={toFrameSrc(url)}
+                style={{ display: 'block', width: '100%', height: '100%' }}
+                className="absolute inset-0 w-full h-full transition-opacity duration-200"
+              />
             )}
-
-            {/*transparent overlay for when click on content */}
             {showMenu && (
               <div className="absolute inset-0 w-full h-full z-50" onClick={() => toggleMenu()} />
             )}
@@ -257,7 +242,7 @@ const Viewer = ({ conf = {} }) => {
       {activeNewTab && (
         <div
           key={activeNewTab.id}
-          className={clsx('absolute inset-0 w-full h-full', 'opacity-100 z-10 pointer-events-auto')}
+          className="absolute inset-0 w-full h-full opacity-100 z-10 pointer-events-auto"
         >
           <NewTab id={activeNewTab.id} updateFn={updateUrl} options={options} />
         </div>

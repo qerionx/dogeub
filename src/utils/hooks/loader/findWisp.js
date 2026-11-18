@@ -9,13 +9,30 @@ const LIST_TTL = 6 * 60 * 60 * 1000;
 const BAD_KEY = 'bad';
 const BAD_TTL = 6 * 60 * 60 * 1000;
 
+const te = new TextEncoder();
+const td = new TextDecoder();
+let dbPromise = null;
+
 function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = (e) => e.target.result.createObjectStore(DB_STORE);
-    req.onsuccess = (e) => resolve(e.target.result);
-    req.onerror = (e) => reject(e.target.error);
-  });
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = (e) => e.target.result.createObjectStore(DB_STORE);
+      req.onsuccess = (e) => {
+        const db = e.target.result;
+        db.onversionchange = () => {
+          db.close();
+          dbPromise = null;
+        };
+        resolve(db);
+      };
+      req.onerror = (e) => {
+        dbPromise = null;
+        reject(e.target.error);
+      };
+    });
+  }
+  return dbPromise;
 }
 
 async function idbGet(key) {
@@ -73,9 +90,9 @@ export async function markBad(url) {
 }
 
 export async function loadStored() {
-  const raw = await idbGet(DB_KEY);
+  const [raw, bad] = await Promise.all([idbGet(DB_KEY), loadBad()]);
   const url = raw ? mango.dnc(raw) : null;
-  if (!isWispUrl(url) || (await loadBad()).has(url)) return null;
+  if (!isWispUrl(url) || bad.has(url)) return null;
   return url;
 }
 
@@ -101,15 +118,17 @@ const toUrls = (csv) =>
     .filter(Boolean)
     .map((u) => `wss://${u}/connection/`);
 
-export function testURL(url, timeout = 2500) {
+export function testURL(url, timeout = 2500, signal) {
   return new Promise((resolve) => {
     let done = false;
     let ws = null;
     let timer = null;
+    const onAbort = () => finish(false);
     const finish = (ok) => {
       if (done) return;
       done = true;
       clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
       if (ws) {
         ws.onopen = ws.onerror = ws.onclose = null;
         try {
@@ -120,12 +139,17 @@ export function testURL(url, timeout = 2500) {
       }
       resolve(ok);
     };
+    if (signal?.aborted) {
+      finish(false);
+      return;
+    }
     try {
       ws = new WebSocket(url);
     } catch {
       finish(false);
       return;
     }
+    signal?.addEventListener('abort', onAbort, { once: true });
     timer = setTimeout(() => finish(false), timeout);
     ws.onopen = () => finish(true);
     ws.onerror = () => finish(false);
@@ -135,7 +159,8 @@ export function testURL(url, timeout = 2500) {
 
 const acok = [
   'https://cdn.jsdelivr.net/gh/ashxmed/symmetrical-adventure@latest/synapses.js',
-  'https://storage.googleapis.com/foigeredu/synapses.js?'+(97+Math.random()*26|0).toString(36)
+  'https://storage.googleapis.com/foigeredu/synapses.js?' +
+    ((97 + Math.random() * 26) | 0).toString(36),
 ];
 const LIST_TIMEOUT = 2500;
 const listSignal = () =>
@@ -150,14 +175,32 @@ const j = (urls) =>
       return res.json();
     }),
   );
+
+let baseKeyPromise = null;
 async function dc(payload, key) {
-  const E = new TextEncoder(), D = new TextDecoder(),
-    a = [64, 56, 107], b = "*Km", c = "01011", e = "&&";
+  const a = [64, 56, 107],
+    b = '*Km',
+    c = '01011',
+    e = '&&';
   if (!payload && !key) return String.fromCharCode(...a) + b + c + e;
-  const km = await crypto.subtle.importKey("raw", E.encode(key), "PBKDF2", 0, ["deriveKey"]),
-    K = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: new Uint8Array(payload.s), iterations: 1e5, hash: "SHA-256" }, km, { name: "AES-GCM", length: 256 }, 0, ["decrypt"]),
-    d = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(payload.i) }, K, new Uint8Array(payload.d));
-  return D.decode(d);
+  const km =
+    baseKeyPromise ||
+    (baseKeyPromise = crypto.subtle.importKey('raw', te.encode(key), 'PBKDF2', false, [
+      'deriveKey',
+    ]));
+  const K = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: new Uint8Array(payload.s), iterations: 1e5, hash: 'SHA-256' },
+    await km,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt'],
+  );
+  const d = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: new Uint8Array(payload.i) },
+    K,
+    new Uint8Array(payload.d),
+  );
+  return td.decode(d);
 }
 
 export const peekStored = loadStored;
@@ -167,12 +210,14 @@ function raceServers(urls) {
     let left = urls.length;
     let settled = false;
     if (!left) return resolve(null);
+    const ctrl = new AbortController();
     urls.forEach((url) =>
-      testURL(url).then((ok) => {
+      testURL(url, 2500, ctrl.signal).then((ok) => {
         left -= 1;
         if (settled) return;
         if (ok) {
           settled = true;
+          ctrl.abort();
           resolve(url);
         } else if (left === 0) {
           settled = true;
@@ -186,13 +231,12 @@ function raceServers(urls) {
 const sameList = (a, b) => a.length === b.length && a.every((u, i) => u === b[i]);
 
 export async function discover(exclude = []) {
-  const bad = await loadBad();
+  const [bad, cached] = await Promise.all([loadBad(), loadList()]);
   exclude.forEach((url) => bad.add(url));
   const usable = (urls) => {
     const good = urls.filter((url) => !bad.has(url));
     return good.length ? good : urls.filter((url) => !exclude.includes(url));
   };
-  const cached = await loadList();
   if (cached) {
     const hit = await raceServers(usable(cached));
     if (hit) {
@@ -216,20 +260,4 @@ export async function discover(exclude = []) {
     saveList(csv);
   }
   return hit;
-}
-
-export async function fetchW() {
-  const stored = await loadStored();
-  if (stored) {
-    console.log(`found stored url, testing ${stored}`);
-    const ok = await testURL(stored);
-    if (ok) {
-      console.log(`stored url still works using it - ${stored}`);
-      return stored;
-    }
-    console.warn(`stored url broke or smt so wiping and searching fresh`);
-    await clearStored();
-  }
-
-  return discover();
 }

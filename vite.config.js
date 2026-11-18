@@ -2,6 +2,7 @@ import { defineConfig, normalizePath } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { transform, transformSync } from 'esbuild';
 import { relative } from 'node:path';
 import react from '@vitejs/plugin-react-swc';
@@ -14,7 +15,13 @@ import { libcurlPath } from '@mercuryworkshop/libcurl-transport';
 import { baremuxPath } from 'bare-mux-fork/node';
 import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 import dotenv from 'dotenv';
-import fs from 'fs';
+import { FastTCPSocket, resolveHost } from './fastnet.js';
+import {
+  patchControllerApi,
+  patchControllerInject,
+  patchControllerSw,
+  patchLibcurl,
+} from './scripts/patchScramjetController.js';
 
 dotenv.config();
 const useBare = process.env.BARE === 'true';
@@ -35,10 +42,15 @@ const sjControllerDist = resolve(modDir('@mercuryworkshop/scramjet-controller'),
 const libcurlV2Dist = resolve(modDir('libcurl-transport-v2'), 'dist');
 const pkgVersion = (name) => JSON.parse(readFileSync(resolve(modDir(name), 'package.json'), 'utf8')).version;
 const stripSourceMap = (content) => content.replace(/\n\/\/# sourceMappingURL=\S+\s*$/, '');
+const sjPatchHash = createHash('sha1')
+  .update(readFileSync(resolve(__dirname, 'scripts/patchScramjetController.js')))
+  .digest('hex')
+  .slice(0, 6);
 const sjAssetVersion = [
   pkgVersion('@mercuryworkshop/scramjet'),
   pkgVersion('@mercuryworkshop/scramjet-controller'),
   pkgVersion('libcurl-transport-v2'),
+  sjPatchHash,
 ].join('-');
 logging.set_level(logging.NONE);
 let bare;
@@ -182,7 +194,7 @@ const createSvgEntry = (bundle) => {
     `analyticsLoader.src = 'https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}';`,
     `document.head.appendChild(analyticsLoader);`,
     `const analyticsConfig = document.createElement('script');`,
-    `analyticsConfig.textContent = \"window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${gaMeasurementId}', { send_page_view: false });\";`,
+    `analyticsConfig.textContent = 'window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag("js", new Date()); gtag("config", "${gaMeasurementId}", { send_page_view: false });';`,
     `document.head.appendChild(analyticsConfig);`,
     `const entryScript = document.createElement('script');`,
     `entryScript.type = 'module';`,
@@ -222,13 +234,23 @@ ${headBootstrap}`)}
 };
 
 Object.assign(wisp.options, {
-  dns_method: 'resolve',
+  dns_method: async (host) => {
+    try {
+      return (await resolveHost(host))[0];
+    } catch (e) {
+      if (e.blocked) return e.blocked;
+      throw e;
+    }
+  },
+  dns_ttl: 0,
   dns_servers: ['1.1.1.3', '1.0.0.3'],
   dns_result_order: 'ipv4first',
 });
 
 const routeRequest = (req, resOrSocket, head) => {
-  if (req.url?.startsWith('/connection/')) return wisp.routeRequest(req, resOrSocket, head);
+  if (req.url?.startsWith('/connection/')) {
+    return wisp.routeRequest(req, resOrSocket, head, { TCPSocket: FastTCPSocket });
+  }
   if (bare.shouldRoute(req))
     return head ? bare.routeUpgrade(req, resOrSocket, head) : bare.routeRequest(req, resOrSocket);
 };
@@ -272,6 +294,7 @@ export default defineConfig(({ command }) => {
             src: [normalizePath(resolve(libcurlPath, 'index.mjs'))],
             dest: PATH_OBF.libcurlDir,
             rename: PATH_OBF.libcurlIndex,
+            transform: patchLibcurl,
           },
           {
             src: [normalizePath(resolve(baremuxPath, 'worker.js'))],
@@ -282,6 +305,7 @@ export default defineConfig(({ command }) => {
             src: [normalizePath(resolve(libcurlV2Dist, 'index.mjs'))],
             dest: PATH_OBF.libcurlDir,
             rename: PATH_OBF.libcurlV2Index,
+            transform: patchLibcurl,
           },
           {
             src: [normalizePath(resolve(sjDist, 'scramjet.wasm'))],
@@ -298,19 +322,19 @@ export default defineConfig(({ command }) => {
             src: [normalizePath(resolve(sjControllerDist, 'controller.api.js'))],
             dest: PATH_OBF.eggsDir,
             rename: PATH_OBF.sjController,
-            transform: stripSourceMap,
+            transform: (content) => patchControllerApi(stripSourceMap(content)),
           },
           {
             src: [normalizePath(resolve(sjControllerDist, 'controller.inject.js'))],
             dest: PATH_OBF.eggsDir,
             rename: PATH_OBF.sjInject,
-            transform: stripSourceMap,
+            transform: (content) => patchControllerInject(stripSourceMap(content)),
           },
           {
             src: [normalizePath(resolve(sjControllerDist, 'controller.sw.js'))],
             dest: PATH_OBF.eggsDir,
             rename: PATH_OBF.sjWorker,
-            transform: stripSourceMap,
+            transform: (content) => patchControllerSw(stripSourceMap(content)),
           },
           useBare && { src: [normalizePath(resolve(bareModulePath, '*'))], dest: 'baremod' },
           {
@@ -412,7 +436,9 @@ export default defineConfig(({ command }) => {
             const target = resolve(distDir, dir);
             try {
               await walkAndMinify(target);
-            } catch {}
+            } catch {
+              void 0;
+            }
           }
 
           const oldflie = resolve(distDir, 'portal/uv.config.js');

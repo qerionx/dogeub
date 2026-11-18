@@ -3,12 +3,15 @@ import { BareMuxConnection } from 'bare-mux-fork';
 import { useOptions } from '/src/utils/optionsContext';
 import { peekStored, testURL, clearStored, discover, markBad } from './findWisp';
 import { READY_TIMEOUT_MS, connectWisp, waitActive, withTimeout } from './bootLogic';
-import { bootScramjet, setScramjetWisp, setWispFailover } from './sj';
+import { bootScramjet, setScramjetWisp, setWispFailover, warmScramjetAssets } from './sj';
 import store from './useLoaderStore';
 
 const registerSw = async (sw) => {
   try {
-    return await navigator.serviceWorker.register(sw.path, sw.scope ? { scope: sw.scope } : undefined);
+    return await navigator.serviceWorker.register(sw.path, {
+      ...(sw.scope ? { scope: sw.scope } : {}),
+      updateViaCache: 'none',
+    });
   } catch (err) {
     console.warn(`SW reg err (${sw.path}):`, err);
     return null;
@@ -17,21 +20,35 @@ const registerSw = async (sw) => {
 
 export default function useReg(active = true) {
   const { options } = useOptions();
-  const uvScopePath = '/q/r/';
-  const sjScopePath = '/k/';
-  const ws = `${location.protocol == 'http:' ? 'ws:' : 'wss:'}//${location.host}/connection/`;
-  const sws = isStaticBuild ? [
-    { path: new URL('./sw.js', location.href).href, scope: new URL(`.${uvScopePath}`, location.href).href },
-    { path: new URL('./s_sw.js', location.href).href, scope: new URL(`.${sjScopePath}`, location.href).href }
-  ] : [
-    { path: new URL('/sw.js', location.origin).href, scope: new URL(uvScopePath, location.origin).href },
-    { path: new URL('/s_sw.js', location.origin).href, scope: new URL(sjScopePath, location.origin).href }
-  ];
   const setWispStatus = store((s) => s.setWispStatus);
 
   useEffect(() => {
     if (!active) return;
     let cancelled = false;
+    const uvScopePath = '/q/r/';
+    const sjScopePath = '/k/';
+    const ws = `${location.protocol == 'http:' ? 'ws:' : 'wss:'}//${location.host}/connection/`;
+    const sws = isStaticBuild
+      ? [
+          {
+            path: new URL('./sw.js', location.href).href,
+            scope: new URL(`.${uvScopePath}`, location.href).href,
+          },
+          {
+            path: new URL('./s_sw.js', location.href).href,
+            scope: new URL(`.${sjScopePath}`, location.href).href,
+          },
+        ]
+      : [
+          {
+            path: new URL('/sw.js', location.origin).href,
+            scope: new URL(uvScopePath, location.origin).href,
+          },
+          {
+            path: new URL('/s_sw.js', location.origin).href,
+            scope: new URL(sjScopePath, location.origin).href,
+          },
+        ];
     const { setRuntimeReady } = store.getState();
 
     const init = async () => {
@@ -48,6 +65,7 @@ export default function useReg(active = true) {
       isStaticBuild && store.getState().wispStatus !== true && setWispStatus('init');
       setRuntimeReady(false);
       performance.mark?.('proxy:init-start');
+      warmScramjetAssets();
 
       try {
         const connection = new BareMuxConnection(baremuxPath);
@@ -125,5 +143,5 @@ export default function useReg(active = true) {
       cancelled = true;
       setRuntimeReady(false);
     };
-  }, [active, options.wServer]);
+  }, [active, options.wServer, setWispStatus]);
 }

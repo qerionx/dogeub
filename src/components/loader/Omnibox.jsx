@@ -10,14 +10,21 @@ import {
   Lock,
 } from 'lucide-react';
 import clsx from 'clsx';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import loaderStore from '/src/utils/hooks/loader/useLoaderStore';
 import { process, openEmbed } from '/src/utils/hooks/loader/utils';
 import { useOptions } from '/src/utils/optionsContext';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { warmProxy } from '/src/utils/hooks/loader/warm';
 
-const Action = ({ Icon, size = 15, action = () => alert('nothing here yet'), disabled = false }) => {
+const isProxied = (url) => url?.includes('q/r/') || url?.includes('k/');
+const isNewTab = (url) => !url || url === 'tabs://new' || url.endsWith('/new');
+
+const Action = ({
+  icon: IconComp,
+  size = 15,
+  action = () => alert('nothing here yet'),
+  disabled = false,
+}) => {
   const { options } = useOptions();
   return (
     <button
@@ -28,108 +35,109 @@ const Action = ({ Icon, size = 15, action = () => alert('nothing here yet'), dis
         options.type != 'light' ? 'hover:bg-[#fff3]' : 'hover:bg-[#97979773]',
       )}
       onClick={(e) => {
-        if (!disabled) {
-          action(e);
-        }
+        if (!disabled) action(e);
       }}
     >
-      <Icon size={size} />
+      <IconComp size={size} />
     </button>
   );
 };
 
 const Omnibox = () => {
-  const [Icon, setIcon] = useState(Info);
+  const [StatusIcon, setStatusIcon] = useState(() => Info);
   const activeTab = loaderStore((state) => state.tabs.find((tab) => tab.active));
-  const { updateUrl, refreshTab, goBack, goForward, toggleTabs, toggleMenu, showUI } = loaderStore();
+  const updateUrl = loaderStore((state) => state.updateUrl);
+  const refreshTab = loaderStore((state) => state.refreshTab);
+  const goBack = loaderStore((state) => state.goBack);
+  const goForward = loaderStore((state) => state.goForward);
+  const toggleTabs = loaderStore((state) => state.toggleTabs);
+  const toggleMenu = loaderStore((state) => state.toggleMenu);
+  const showUI = loaderStore((state) => state.showUI);
+  const activeTabId = activeTab?.id;
+  const activeTabUrl = activeTab?.url;
+  const activeIframeUrl = loaderStore((state) =>
+    activeTabId ? state.iframeUrls[activeTabId] : undefined,
+  );
+
   const inputRef = useRef(null);
   const { options } = useOptions();
-  const { state } = useLocation();
-  const navigate = useNavigate();
-  const { iframeUrls } = loaderStore();
 
-  const isProcied = (url) => url?.includes('q/r/') || url?.includes('k/');
-  const isNewTab = (url) => !url || url === 'tabs://new' || url.endsWith('/new');
-
-  const updateIcon = (url) => {
-    if (isNewTab(url)) {
-      setIcon(Info);
-    } else if (isProcied(url)) {
-      const decoded = process(url, true, options.prType || 'auto', options.engine || undefined);
-      setIcon(decoded.startsWith('https://') ? Lock : Info);
-    } else {
-      setIcon(Info);
-    }
-  };
-
-  const getDisplayUrl = (url) => {
-    if (isNewTab(url)) return '';
-    if (isProcied(url)) {
-      const decoded = process(url, true, options.prType || 'auto', options.engine || undefined);
-      return decoded.startsWith('https://') ? decoded.slice(8) : decoded;
-    }
-    return url;
-  };
-
-  const [input, setInput] = useState(getDisplayUrl(activeTab?.url));
-
-  useEffect(() => {
-    const url = iframeUrls[activeTab?.id];
-    if (activeTab?.url === 'tabs://new') {
-      setInput('');
-    } else if (url && url !== 'about:blank') {
-      setInput(getDisplayUrl(url));
-      updateIcon(url);
-    }
-  }, [iframeUrls, activeTab?.id]);
-
-  useEffect(() => {
-    if (state?.url && activeTab) {
-      const processedUrl = process(state.url, false, options.prType || 'auto', options.engine || undefined);
-      if (processedUrl) {
-        updateUrl(activeTab.id, processedUrl);
+  const updateIcon = useCallback(
+    (url) => {
+      if (isNewTab(url)) {
+        setStatusIcon(() => Info);
+      } else if (isProxied(url)) {
+        const decoded = process(url, true, options.prType || 'auto', options.engine || undefined);
+        setStatusIcon(() => (decoded.startsWith('https://') ? Lock : Info));
+      } else {
+        setStatusIcon(() => Info);
       }
-      navigate('.', { replace: true, state: {} });
-    }
-  }, [state?.url, activeTab?.id]);
+    },
+    [options.prType, options.engine],
+  );
+
+  const getDisplayUrl = useCallback(
+    (url) => {
+      if (isNewTab(url)) return '';
+      if (isProxied(url)) {
+        const decoded = process(url, true, options.prType || 'auto', options.engine || undefined);
+        return decoded.startsWith('https://') ? decoded.slice(8) : decoded;
+      }
+      return url;
+    },
+    [options.prType, options.engine],
+  );
+
+  const [input, setInput] = useState(() => getDisplayUrl(activeTabUrl));
 
   useEffect(() => {
-    if (activeTab) {
-      updateIcon(activeTab.url);
+    if (activeTabUrl === 'tabs://new') {
+      setInput('');
+      setStatusIcon(() => Info);
+    } else if (activeIframeUrl && activeIframeUrl !== 'about:blank') {
+      setInput(getDisplayUrl(activeIframeUrl));
+      updateIcon(activeIframeUrl);
+    } else if (activeTabUrl) {
+      setInput(getDisplayUrl(activeTabUrl));
+      updateIcon(activeTabUrl);
     }
-  }, [activeTab]);
+  }, [activeIframeUrl, activeTabId, activeTabUrl, getDisplayUrl, updateIcon]);
 
   return (
-    <div className={clsx("h-10 flex items-center overflow-hidden gap-1 px-2", showUI ? '' : 'hidden')}>
+    <div
+      className={clsx(
+        'h-10 flex items-center overflow-hidden gap-1 px-2',
+        showUI ? '' : 'hidden',
+      )}
+    >
       <Action
-        Icon={ArrowLeft}
+        icon={ArrowLeft}
         size="17"
         action={() =>
-          activeTab &&
-          goBack(activeTab.id, () => {
+          activeTabId &&
+          goBack(activeTabId, () => {
             setInput('');
           })
         }
       />
-      {/** ^^ callback used if going back to a new tab only */}
-      <Action Icon={ArrowRight} size="17" action={() => activeTab && goForward(activeTab.id)} />
-      <Action Icon={RotateCw} size="16" action={() => activeTab && refreshTab(activeTab.id)} />
+      <Action icon={ArrowRight} size="17" action={() => activeTabId && goForward(activeTabId)} />
+      <Action icon={RotateCw} size="16" action={() => activeTabId && refreshTab(activeTabId)} />
       <div
         className={clsx(
-          ' h-[calc(100%-8px)] w-full',
+          'h-[calc(100%-8px)] w-full',
           'rounded-lg border flex items-center px-2 ml-1 mr-1',
         )}
         style={{
           backgroundColor: options.omninputColor || '#06080d8f',
-          borderColor: options.type == 'light' ? '#a1a1a173' : "#efefef30",
+          borderColor: options.type == 'light' ? '#a1a1a173' : '#efefef30',
         }}
       >
-        <Icon size="15" />
+        <StatusIcon size="15" />
         <input
           className="h-full w-full outline-0 text-[0.8rem] ml-2"
           placeholder="Search with Google or enter address"
-          onSelect={() => setIcon(Search)}
-          onBlur={() => updateIcon(iframeUrls[activeTab?.id])}
+          onSelect={() => setStatusIcon(() => Search)}
+          onBlur={() => updateIcon(activeIframeUrl || activeTabUrl)}
           value={input}
           ref={inputRef}
           onChange={(e) => {
@@ -137,27 +145,38 @@ const Omnibox = () => {
             e.target.value.trim() && warmProxy();
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && activeTab && input.length !== 0) {
-              const processedUrl = process(input, false, options.prType || 'auto', options.engine || undefined);
+            if (e.key === 'Enter' && activeTabId) {
+              const raw = e.currentTarget.value.trim();
+              if (!raw) return;
+              const processedUrl = process(
+                raw,
+                false,
+                options.prType || 'auto',
+                options.engine || undefined,
+              );
               if (processedUrl) {
-                updateUrl(activeTab.id, processedUrl);
+                updateUrl(activeTabId, processedUrl);
               }
               inputRef.current.blur();
             }
           }}
-        ></input>
+        />
       </div>
       <Action
-        Icon={SquareArrowOutUpRight}
+        icon={SquareArrowOutUpRight}
         size="15"
-        action={() => openEmbed(activeTab?.url)}
-        disabled={activeTab?.url == 'tabs://new'}
+        action={() => openEmbed(activeTabUrl)}
+        disabled={activeTabUrl == 'tabs://new'}
       />
-      <Action Icon={Folders} size="17" action={toggleTabs} />
-      <Action Icon={Menu} size="17" action={(e) => {
-        e?.stopPropagation();
-        toggleMenu();
-      }} />
+      <Action icon={Folders} size="17" action={toggleTabs} />
+      <Action
+        icon={Menu}
+        size="17"
+        action={(e) => {
+          e?.stopPropagation();
+          toggleMenu();
+        }}
+      />
     </div>
   );
 };
