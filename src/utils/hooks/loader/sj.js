@@ -20,6 +20,7 @@ const state = {
   frame: null,
   codec: null,
   transport: null,
+  rawClient: null,
   boot: null,
   scripts: null,
   libcurlMod: null,
@@ -95,6 +96,9 @@ const FAILOVER_WINDOW_MS = 60000;
 const FAILOVER_STALLS = 4;
 const SOCKET_IDLE_MS = 4000;
 const QUEUED_TIMEOUT_MS = 60000;
+const PROBE_URL = 'https://www.gstatic.com/generate_204';
+const PROBE_TIMEOUT_MS = 5000;
+const HEALTHY_FOR_MS = 30000;
 const RETRY_DELAYS_MS = [300, 1200];
 const LIBCURL_CONNECTIONS = [32, 10, 8];
 const wispUrls = new Set();
@@ -137,49 +141,58 @@ const recycleStalledSockets = () => {
 let stallLog = [];
 let wispFailover = null;
 let lastFailover = 0;
+let failoverPending = null;
+let serverProbe = null;
+let lastHealthy = 0;
+let lastProbeOk = 0;
 
 export const setWispFailover = (handler) => {
   wispFailover = handler;
+};
+
+const failover = () => {
+  const now = Date.now();
+  if (!wispFailover || failoverPending || now - lastFailover <= FAILOVER_WINDOW_MS) return;
+  lastFailover = now;
+  stallLog = [];
+  failoverPending = Promise.resolve(wispFailover(state.transport?.wisp))
+    .catch(() => {})
+    .finally(() => {
+      failoverPending = null;
+    });
 };
 
 const noteStall = () => {
   const now = Date.now();
   stallLog = stallLog.filter((at) => now - at < FAILOVER_WINDOW_MS);
   stallLog.push(now);
-  if (
-    wispFailover &&
-    stallLog.length >= FAILOVER_STALLS &&
-    now - lastFailover > FAILOVER_WINDOW_MS
-  ) {
-    lastFailover = now;
-    stallLog = [];
-    Promise.resolve(wispFailover(state.transport?.wisp)).catch(() => {});
-  }
+  if (stallLog.length >= FAILOVER_STALLS) failover();
   recycleStalledSockets();
+};
+
+const checkServer = (client, since) => {
+  if (serverProbe) return serverProbe;
+  if (lastHealthy > since || Date.now() - lastProbeOk < HEALTHY_FOR_MS) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+  serverProbe = client
+    .request(new URL(PROBE_URL), 'GET', null, [], controller.signal)
+    .then((res) => {
+      lastProbeOk = Date.now();
+      lastHealthy = lastProbeOk;
+      res.body?.cancel?.().catch(() => {});
+    })
+    .catch(() => failover())
+    .finally(() => {
+      clearTimeout(timer);
+      serverProbe = null;
+    });
+  return serverProbe;
 };
 
 const CONNECT_FAILURE = /code (7|35|56):/;
 const NOT_SENT_FAILURE = /code (7|35):/;
-let socketReset = null;
-
-const closeSocket = (socket) =>
-  new Promise((resolve) => {
-    if (socket.readyState === WebSocket.CLOSED) return resolve();
-    socket.addEventListener('close', () => resolve(), { once: true });
-    setTimeout(resolve, 1000);
-    socket.close();
-  });
-
-const resetWispSockets = () => {
-  if (!socketReset) {
-    socketReset = Promise.all([...wispSockets].map(closeSocket)).then(() =>
-      setTimeout(() => {
-        socketReset = null;
-      }, 2000),
-    );
-  }
-  return socketReset;
-};
+const UNREACHABLE_FAILURE = /code 7:/;
 
 const IFRAME_DEST_HOSTS = new Set(['rawcdn.githack.com', 'raw.githack.com']);
 
@@ -212,15 +225,19 @@ const guardTransport = (inner) => {
         forward();
       };
       if (retryable) timer = setTimeout(checkStall, HEADER_TIMEOUT_MS[attempt]);
+      const client = state.rawClient || inner;
       try {
-        return await inner.request(remote, method, body, headers, controller.signal);
+        const res = await client.request(remote, method, body, headers, controller.signal);
+        lastHealthy = Date.now();
+        return res;
       } catch (err) {
         const message = String(err?.message || err);
-        const brokenSocket = CONNECT_FAILURE.test(message);
-        if (brokenSocket) resetWispSockets();
+        if (CONNECT_FAILURE.test(message)) recycleStalledSockets();
+        const probe = UNREACHABLE_FAILURE.test(message) ? checkServer(client, startedAt) : null;
         const canRetry = retryable || (replayable && NOT_SENT_FAILURE.test(message));
         if (!canRetry || attempt >= RETRY_DELAYS_MS.length || signal?.aborted) throw err;
-        if (socketReset) await socketReset;
+        if (probe) await probe;
+        if (failoverPending) await failoverPending;
       } finally {
         clearTimeout(timer);
         signal?.removeEventListener('abort', forward);
@@ -254,6 +271,7 @@ export const setScramjetWisp = (wispUrl) => {
       });
       await client.init();
       const transport = guardTransport(client);
+      state.rawClient = client;
       state.transport = transport;
       state.controller?.setTransport(transport);
       state.transportWaiters.splice(0).forEach((resolve) => resolve(transport));
