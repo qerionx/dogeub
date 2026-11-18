@@ -73,7 +73,10 @@ const timeout = (promise, ms, message) =>
 
 const normalizeWisp = (url) => (url.endsWith('/') ? url : `${url}/`);
 
-const HEADER_TIMEOUT_MS = 8000;
+const HEADER_TIMEOUT_MS = [8000, 8000, 12000];
+const STALL_WINDOW_MS = 10000;
+const FAILOVER_WINDOW_MS = 60000;
+const FAILOVER_STALLS = 4;
 const SOCKET_IDLE_MS = 4000;
 const RETRY_DELAYS_MS = [300, 1200];
 const LIBCURL_CONNECTIONS = [24, 8, 6];
@@ -104,6 +107,35 @@ const recycleStalledSockets = () => {
   for (const socket of wispSockets) {
     if (now - socket.lastActivity > SOCKET_IDLE_MS) socket.close();
   }
+};
+
+let recentStalls = [];
+let stallLog = [];
+let wispFailover = null;
+let lastFailover = 0;
+
+export const setWispFailover = (handler) => {
+  wispFailover = handler;
+};
+
+const noteStall = () => {
+  const now = Date.now();
+  stallLog = stallLog.filter((at) => now - at < FAILOVER_WINDOW_MS);
+  stallLog.push(now);
+  if (
+    wispFailover &&
+    stallLog.length >= FAILOVER_STALLS &&
+    now - lastFailover > FAILOVER_WINDOW_MS
+  ) {
+    lastFailover = now;
+    stallLog = [];
+    Promise.resolve(wispFailover(state.transport?.wisp)).catch(() => {});
+  }
+  recentStalls = recentStalls.filter((at) => now - at < STALL_WINDOW_MS);
+  recentStalls.push(now);
+  if (recentStalls.length < 2) return recycleStalledSockets();
+  recentStalls = [];
+  resetWispSockets();
 };
 
 const CONNECT_FAILURE = /code (7|35|56):/;
@@ -154,13 +186,12 @@ const guardTransport = (inner) => ({
       const controller = new AbortController();
       const forward = () => controller.abort();
       signal?.addEventListener('abort', forward, { once: true });
-      const timer =
-        retryable && attempt === 0
-          ? setTimeout(() => {
-              recycleStalledSockets();
-              forward();
-            }, HEADER_TIMEOUT_MS)
-          : null;
+      const timer = retryable
+        ? setTimeout(() => {
+            noteStall();
+            forward();
+          }, HEADER_TIMEOUT_MS[attempt])
+        : null;
       try {
         return await inner.request(remote, method, body, headers, controller.signal);
       } catch (err) {
@@ -169,7 +200,7 @@ const guardTransport = (inner) => ({
         if (brokenSocket) resetWispSockets();
         const canRetry = retryable || (replayable && NOT_SENT_FAILURE.test(message));
         if (!canRetry || attempt >= RETRY_DELAYS_MS.length || signal?.aborted) throw err;
-        if (brokenSocket) await resetWispSockets();
+        if (socketReset) await socketReset;
       } finally {
         clearTimeout(timer);
         signal?.removeEventListener('abort', forward);
