@@ -94,6 +94,7 @@ const HEADER_TIMEOUT_MS = [8000, 8000, 12000];
 const FAILOVER_WINDOW_MS = 60000;
 const FAILOVER_STALLS = 4;
 const SOCKET_IDLE_MS = 4000;
+const QUEUED_TIMEOUT_MS = 60000;
 const RETRY_DELAYS_MS = [300, 1200];
 const LIBCURL_CONNECTIONS = [32, 10, 8];
 const wispUrls = new Set();
@@ -116,6 +117,14 @@ const trackWispSockets = () => {
   }
   TrackedWebSocket.dubTracked = true;
   window.WebSocket = TrackedWebSocket;
+};
+
+const wispReceiving = () => {
+  const now = Date.now();
+  for (const socket of wispSockets) {
+    if (now - socket.lastActivity < SOCKET_IDLE_MS) return true;
+  }
+  return false;
 };
 
 const recycleStalledSockets = () => {
@@ -192,12 +201,17 @@ const guardTransport = (inner) => {
       const controller = new AbortController();
       const forward = () => controller.abort();
       signal?.addEventListener('abort', forward, { once: true });
-      const timer = retryable
-        ? setTimeout(() => {
-            noteStall();
-            forward();
-          }, HEADER_TIMEOUT_MS[attempt])
-        : null;
+      const startedAt = Date.now();
+      let timer = null;
+      const checkStall = () => {
+        if (wispReceiving() && Date.now() - startedAt < QUEUED_TIMEOUT_MS) {
+          timer = setTimeout(checkStall, 1000);
+          return;
+        }
+        noteStall();
+        forward();
+      };
+      if (retryable) timer = setTimeout(checkStall, HEADER_TIMEOUT_MS[attempt]);
       try {
         return await inner.request(remote, method, body, headers, controller.signal);
       } catch (err) {
