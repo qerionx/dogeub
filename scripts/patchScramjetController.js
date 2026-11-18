@@ -86,7 +86,7 @@ export function patchControllerSw(code) {
 }
 
 export function patchLibcurl(code) {
-  return replaceExact(
+  let out = replaceExact(
     code,
     'libcurl-null-body-status',
     /if\s*\(response_info\.status\s*===\s*204\s*\|\|\s*response_info\.status\s*===\s*205\)\s*\{\s*response_data\s*=\s*null;\s*\}/g,
@@ -94,4 +94,13 @@ export function patchLibcurl(code) {
       'if (response_info.status === 101 || response_info.status === 103 || response_info.status === 204 || response_info.status === 205 || response_info.status === 304) { response_data = null; }',
     1,
   );
+  out = replaceExact(
+    out,
+    'libcurl-body-error',
+    /(let real_end_callback = \(error\) => \{\s*if \(!headers_received && error === 0\) \{\s*headers_received = true;\s*headers_callback\(stream\);\s*\}\s*try \{\s*)stream_controller\.close\(\);/g,
+    (_, head) =>
+      `${head}if (error === 0) stream_controller.close(); else stream_controller.error(new TypeError("Request failed with error code " + error));`,
+    1,
+  );
+  return out;
 }

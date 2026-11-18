@@ -33,6 +33,15 @@ const libv2Out = patchLibcurl(libv2Src);
 
 assert.ok(libv1Out.includes('response_info.status === 304'), 'libcurl v1 handles 304');
 assert.ok(libv2Out.includes('response_info.status === 304'), 'libcurl v2 handles 304');
+for (const [name, out] of [
+  ['v1', libv1Out],
+  ['v2', libv2Out],
+]) {
+  assert.ok(
+    out.includes('if (error === 0) stream_controller.close(); else stream_controller.error('),
+    `libcurl ${name} errors a body cut off after the headers`,
+  );
+}
 assert.ok(!swOut.includes('timed out waiting for set cookie response'), 'sw cookie deadlock capped');
 
 assert.ok(apiOut.includes('this.wasmRaw='), 'controller.api caches wasmRaw');

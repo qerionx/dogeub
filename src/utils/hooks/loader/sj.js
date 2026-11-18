@@ -91,7 +91,6 @@ const timeout = (promise, ms, message) =>
 const normalizeWisp = (url) => (url.endsWith('/') ? url : `${url}/`);
 
 const HEADER_TIMEOUT_MS = [8000, 8000, 12000];
-const STALL_WINDOW_MS = 10000;
 const FAILOVER_WINDOW_MS = 60000;
 const FAILOVER_STALLS = 4;
 const SOCKET_IDLE_MS = 4000;
@@ -126,7 +125,6 @@ const recycleStalledSockets = () => {
   }
 };
 
-let recentStalls = [];
 let stallLog = [];
 let wispFailover = null;
 let lastFailover = 0;
@@ -148,11 +146,7 @@ const noteStall = () => {
     stallLog = [];
     Promise.resolve(wispFailover(state.transport?.wisp)).catch(() => {});
   }
-  recentStalls = recentStalls.filter((at) => now - at < STALL_WINDOW_MS);
-  recentStalls.push(now);
-  if (recentStalls.length < 2) return recycleStalledSockets();
-  recentStalls = [];
-  resetWispSockets();
+  recycleStalledSockets();
 };
 
 const CONNECT_FAILURE = /code (7|35|56):/;
