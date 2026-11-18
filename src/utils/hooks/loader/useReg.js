@@ -3,7 +3,13 @@ import { BareMuxConnection } from 'bare-mux-fork';
 import { useOptions } from '/src/utils/optionsContext';
 import { peekStored, testURL, clearStored, discover, markBad } from './findWisp';
 import { READY_TIMEOUT_MS, connectWisp, waitActive, withTimeout } from './bootLogic';
-import { bootScramjet, setScramjetWisp, setWispFailover, warmScramjetAssets } from './sj';
+import {
+  LIBCURL_CONNECTIONS,
+  bootScramjet,
+  setScramjetWisp,
+  setWispFailover,
+  warmScramjetAssets,
+} from './sj';
 import store from './useLoaderStore';
 
 const registerSw = async (sw) => {
@@ -76,7 +82,9 @@ export default function useReg(active = true) {
               if (cancelled) return;
               const target = isStaticBuild ? wispUrl : ws;
               await Promise.all([
-                connection.setTransport(libcurlPath, [{ wisp: target }]),
+                connection.setTransport(libcurlPath, [
+                  { wisp: target, connections: LIBCURL_CONNECTIONS },
+                ]),
                 setScramjetWisp(target),
               ]);
             })().catch((err) => console.warn('setTransport err:', err)),
