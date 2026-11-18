@@ -1,4 +1,5 @@
-import { mango } from './of.js';
+import { mango, makeSjCodec } from './of.js';
+import { cachedTransportRequest } from './pxCache.js';
 
 const FRAME_HANDLE = Symbol.for('controller frame handle');
 const ROUTED_PATH = /^[a-z0-9]+\/[a-z0-9]+\/(.*)$/;
@@ -11,7 +12,8 @@ const appPath = (path) =>
   isStaticBuild ? new URL(`./${path}`, location.href).pathname : `/${path}`;
 const versioned = (path) => `${appPath(path)}?v=${SJ_ASSET_VERSION}`;
 
-export const sjPrefix = () => appPath('k/');
+let cachedSjPrefix = null;
+export const sjPrefix = () => cachedSjPrefix || (cachedSjPrefix = appPath('k/'));
 
 const state = {
   controller: null,
@@ -19,38 +21,53 @@ const state = {
   codec: null,
   transport: null,
   boot: null,
+  scripts: null,
+  libcurlMod: null,
+  wasmWarm: false,
   transportChain: Promise.resolve(),
   transportWaiters: [],
 };
 
-const loadScript = (src) =>
-  new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = src;
-    script.onload = resolve;
-    script.onerror = () => reject(new Error(`failed to load ${src}`));
-    document.head.appendChild(script);
-  });
-
-const makeCodec = () => {
-  const key = Array.from(
-    new TextEncoder().encode(
-      btoa(new Date().toISOString().slice(0, 10) + location.host)
-        .split('')
-        .reverse()
-        .join('')
-        .slice(6),
+const loadScriptsOrdered = (srcs) => {
+  if (typeof $scramjetController !== 'undefined') return Promise.resolve();
+  if (state.scripts) return state.scripts;
+  state.scripts = Promise.all(
+    srcs.map(
+      (src) =>
+        new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = src;
+          script.async = false;
+          script.onload = resolve;
+          script.onerror = () => reject(new Error(`failed to load ${src}`));
+          document.head.appendChild(script);
+        }),
     ),
-  ).slice(0, 8);
-  const encode = new Function(
-    's',
-    `if(!s)return s;const k=[${key}];const d=new TextEncoder().encode(s);let o='';for(let i=0;i<d.length;i++)o+=(d[i]^k[i%8]).toString(16).padStart(2,'0');return o;`,
-  );
-  const decode = new Function(
-    's',
-    `if(!s)return s;const k=[${key}];let h=0;while(h<s.length&&/[0-9a-fA-F]/.test(s[h]))h++;if(h<2||h%2){try{return decodeURIComponent(s)}catch(e){return s}}const o=new Uint8Array(h>>1);for(let i=0;i<o.length;i++)o[i]=parseInt(s.substr(i*2,2),16)^k[i%8];return new TextDecoder().decode(o)+s.slice(h);`,
-  );
-  return { encode, decode };
+  ).catch((err) => {
+    state.scripts = null;
+    throw err;
+  });
+  return state.scripts;
+};
+
+const importLibcurlV2 = () => {
+  if (!state.libcurlMod) {
+    const modUrl = `${location.origin}${versioned('x/c.mjs')}`;
+    state.libcurlMod = Function('u', 'return import(u)')(modUrl).catch((err) => {
+      state.libcurlMod = null;
+      throw err;
+    });
+  }
+  return state.libcurlMod;
+};
+
+export const warmScramjetAssets = () => {
+  importLibcurlV2().catch(() => {});
+  loadScriptsOrdered([versioned('z/b.js'), versioned('z/c.js')]).catch(() => {});
+  if (!state.wasmWarm) {
+    state.wasmWarm = true;
+    fetch(versioned('z/a.w')).catch(() => {});
+  }
 };
 
 const settleWorker = (worker) =>
@@ -79,7 +96,7 @@ const FAILOVER_WINDOW_MS = 60000;
 const FAILOVER_STALLS = 4;
 const SOCKET_IDLE_MS = 4000;
 const RETRY_DELAYS_MS = [300, 1200];
-const LIBCURL_CONNECTIONS = [24, 8, 6];
+const LIBCURL_CONNECTIONS = [32, 10, 8];
 const wispUrls = new Set();
 const wispSockets = new Set();
 
@@ -172,13 +189,8 @@ const asIframeRequest = (remote, headers) =>
       )
     : headers;
 
-const guardTransport = (inner) => ({
-  ready: true,
-  wisp: inner.wisp,
-  init: async () => {},
-  meta: async () => {},
-  connect: (...args) => inner.connect(...args),
-  async request(remote, method, body, rawHeaders, signal) {
+const guardTransport = (inner) => {
+  const rawFetch = async (remote, method, body, rawHeaders, signal) => {
     const headers = asIframeRequest(remote, rawHeaders);
     const retryable = (method === 'GET' || method === 'HEAD') && !body;
     const replayable = !(body instanceof ReadableStream);
@@ -207,14 +219,25 @@ const guardTransport = (inner) => ({
       }
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
     }
-  },
-});
+  };
+
+  return {
+    ready: true,
+    wisp: inner.wisp,
+    init: async () => {},
+    meta: async () => {},
+    connect: (...args) => inner.connect(...args),
+    request(remote, method, body, rawHeaders, signal) {
+      return cachedTransportRequest(remote, method, body, rawHeaders, signal, rawFetch);
+    },
+  };
+};
 
 export const setScramjetWisp = (wispUrl) => {
   if (!wispUrl) return state.transportChain;
   state.transportChain = state.transportChain
     .then(async () => {
-      const { LibcurlClient } = await import(/* @vite-ignore */ versioned('x/c.mjs'));
+      const { LibcurlClient } = await importLibcurlV2();
       trackWispSockets();
       wispUrls.add(normalizeWisp(wispUrl));
       const client = new LibcurlClient({
@@ -237,6 +260,10 @@ const waitForTransport = () =>
     : new Promise((resolve) => state.transportWaiters.push(resolve));
 
 const activeWorker = async (registration) => {
+  if (registration?.active && !registration.installing && !registration.waiting) {
+    registration.update?.().catch(() => {});
+    return registration.active;
+  }
   await registration?.update?.().catch(() => {});
   await timeout(
     settleWorker(registration?.installing || registration?.waiting),
@@ -290,13 +317,13 @@ const keepControllerAttached = (controller, registration) => {
 export const bootScramjet = (registration) => {
   if (state.boot) return state.boot;
   state.boot = (async () => {
-    const worker = await activeWorker(registration);
-    if (typeof $scramjetController === 'undefined') {
-      await loadScript(versioned('z/b.js'));
-      await loadScript(versioned('z/c.js'));
-    }
-    const transport = await waitForTransport();
-    state.codec = makeCodec();
+    const scriptsTask = loadScriptsOrdered([versioned('z/b.js'), versioned('z/c.js')]);
+    const [worker, transport] = await Promise.all([
+      activeWorker(registration),
+      waitForTransport(),
+      scriptsTask,
+    ]);
+    state.codec = makeSjCodec();
     const controller = await createController(worker, transport, 5000).catch(async () =>
       createController(await activeWorker(registration), state.transport || transport, 10000),
     );

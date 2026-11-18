@@ -1,6 +1,6 @@
 import Nav from '../layouts/Nav';
-import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react';
-import { Search, ChevronDown, LayoutGrid } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback, memo } from 'react';
+import { Search, LayoutGrid } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useOptions } from '/src/utils/optionsContext';
 import Pagination from '../components/Pagination';
@@ -9,18 +9,12 @@ import styles from '../styles/apps.module.css';
 import theme from '../styles/theming.module.css';
 import clsx from 'clsx';
 
-const SORT_OPTIONS = [
-  { value: 'categorical', label: 'Categorical' },
-  { value: 'alphabetical', label: 'Alphabetical' },
-  { value: 'newest', label: 'Newest' },
-];
-
-const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemStyles }) => {
+const AppCard = memo(({ app, cardKey, onClick, fallbackMap, onImgError, itemTheme, itemStyles }) => {
   const [loaded, setLoaded] = useState(false);
-  
+  const showFallback = !app.icon || fallbackMap[cardKey];
+
   return (
     <div
-      key={app.appName}
       className={clsx(
         itemStyles.app,
         itemTheme.appItemColor,
@@ -31,10 +25,10 @@ const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemSt
       onPointerDown={!app.local && !app.disabled ? warmProxy : undefined}
     >
       <div className="w-20 h-20 rounded-[12px] mb-4 overflow-hidden relative">
-        {!loaded && !fallbackMap[app.appName] && (
+        {!loaded && !showFallback && (
           <div className="absolute inset-0 bg-gray-700 animate-pulse" />
         )}
-        {fallbackMap[app.appName] ? (
+        {showFallback ? (
           <LayoutGrid className="w-full h-full" />
         ) : (
           <img
@@ -43,7 +37,7 @@ const AppCard = memo(({ app, onClick, fallbackMap, onImgError, itemTheme, itemSt
             loading="lazy"
             className="w-full h-full object-cover"
             onLoad={() => setLoaded(true)}
-            onError={() => onImgError(app.appName)}
+            onError={() => onImgError(cardKey)}
           />
         )}
       </div>
@@ -67,40 +61,22 @@ const Apps = memo(() => {
   }, []);
 
   const [q, setQ] = useState('');
-  const [sort, setSort] = useState('categorical');
   const [page, setPage] = useState(1);
-  const [showSort, setShowSort] = useState(false);
-  const sortRef = useRef(null);
   const [fallback, setFallback] = useState({});
 
   const perPage = options.itemsPerPage || 20;
 
-  useEffect(() => {
-    const close = (e) => !sortRef.current?.contains(e.target) && setShowSort(false);
-    window.addEventListener('pointerdown', close);
-    return () => window.removeEventListener('pointerdown', close);
-  }, []);
-
-  const indexedApps = useMemo(() => appsList.map((a, i) => ({ ...a, __i: i })), [appsList]);
-
-  const sortedApps = useMemo(() => {
-    switch (sort) {
-      case 'alphabetical':
-        return [...indexedApps].sort((a, b) =>
-          a.appName.localeCompare(b.appName, undefined, { sensitivity: 'base' }),
-        );
-      case 'categorical':
-        return [...indexedApps].sort(
+  const sortedApps = useMemo(
+    () =>
+      appsList
+        .map((a, i) => ({ ...a, __i: i }))
+        .sort(
           (a, b) =>
             (a.desc || '').localeCompare(b.desc || '', undefined, { sensitivity: 'base' }) ||
             a.appName.localeCompare(b.appName, undefined, { sensitivity: 'base' }),
-        );
-      case 'newest':
-        return [...indexedApps].sort((a, b) => b.__i - a.__i);
-      default:
-        return indexedApps;
-    }
-  }, [indexedApps, sort]);
+        ),
+    [appsList],
+  );
 
   const filtered = useMemo(() => {
     const fq = q.toLowerCase().replace(/\s/g, '');
@@ -141,6 +117,11 @@ const Apps = memo(() => {
     [options.theme],
   );
 
+  const itemTheme = useMemo(
+    () => ({ ...theme, current: options.theme || 'default' }),
+    [options.theme],
+  );
+
   const placeholder = useMemo(() => `Search ${appsList.length} apps`, [appsList.length]);
 
   return (
@@ -164,17 +145,21 @@ const Apps = memo(() => {
       </div>
 
       <div className="flex flex-wrap justify-center pb-2">
-        {filtered.paged.map((app) => (
-          <AppCard
-            key={app.appName}
-            app={app}
-            onClick={navApp}
-            fallbackMap={fallback}
-            onImgError={handleImgError}
-            itemTheme={{ ...theme, current: options.theme || 'default' }}
-            itemStyles={styles}
-          />
-        ))}
+        {filtered.paged.map((app) => {
+          const cardKey = `${app.appName}-${app.__i}`;
+          return (
+            <AppCard
+              key={cardKey}
+              cardKey={cardKey}
+              app={app}
+              onClick={navApp}
+              fallbackMap={fallback}
+              onImgError={handleImgError}
+              itemTheme={itemTheme}
+              itemStyles={styles}
+            />
+          );
+        })}
       </div>
 
       {filtered.filteredApps.length > perPage && (

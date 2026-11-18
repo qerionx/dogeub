@@ -57,7 +57,7 @@ const QuickLinks = ({ cls, nav = true, navigating }) => {
     };
   }, []);
 
-  useEffect(() => updateOption({ quickLinks }), [quickLinks]);
+  useEffect(() => updateOption({ quickLinks }), [quickLinks, updateOption]);
 
   useEffect(() => {
     setFallback({});
@@ -109,7 +109,7 @@ const QuickLinks = ({ cls, nav = true, navigating }) => {
           </div>
 
           <div className={linkLogo}>
-            {fallback[i] ? (
+            {fallback[i] || !link.icon ? (
               <Globe className="w-7 h-7" />
             ) : (
               <img

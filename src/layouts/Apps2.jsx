@@ -10,16 +10,24 @@ import styles from '../styles/apps.module.css';
 import theme from '../styles/theming.module.css';
 import clsx from 'clsx';
 
-const AppCard = memo(function AppCard({ app, onClick, fallbackMap, onImgError, itemTheme, itemStyles }) {
+const AppCard = memo(function AppCard({
+  app,
+  cardKey,
+  onClick,
+  fallbackMap,
+  onImgError,
+  itemTheme,
+  itemStyles,
+}) {
   const [loaded, setLoaded] = useState(false);
   const hover = useRef(null);
   if (!hover.current) hover.current = createHoverWarm();
   useEffect(() => () => hover.current.leave(), []);
   const proxied = !app.local && !app.disabled;
-  
+  const showFallback = !app.icon || fallbackMap[cardKey];
+
   return (
     <div
-      key={app.appName}
       className={clsx(
         'flex-shrink-0',
         itemStyles.app,
@@ -33,10 +41,10 @@ const AppCard = memo(function AppCard({ app, onClick, fallbackMap, onImgError, i
       onPointerLeave={proxied ? hover.current.leave : undefined}
     >
       <div className="w-20 h-20 rounded-[12px] mb-4 overflow-hidden relative">
-        {!loaded && !fallbackMap[app.appName] && (
+        {!loaded && !showFallback && (
           <div className="absolute inset-0 bg-gray-700 animate-pulse" />
         )}
-        {fallbackMap[app.appName] ? (
+        {showFallback ? (
           <LayoutGrid className="w-full h-full" />
         ) : (
           <img
@@ -45,11 +53,13 @@ const AppCard = memo(function AppCard({ app, onClick, fallbackMap, onImgError, i
             loading="lazy"
             className="w-full h-full object-cover"
             onLoad={() => setLoaded(true)}
-            onError={() => onImgError(app.appName)}
+            onError={() => onImgError(cardKey)}
           />
         )}
       </div>
-      <p className="text-m font-semibold mb-3 flex-grow line-clamp-2">{app.appName.split('').join('\u200B')}</p>
+      <p className="text-m font-semibold mb-3 flex-grow line-clamp-2">
+        {app.appName.split('').join('\u200B')}
+      </p>
       <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#ffffff15] hover:bg-[#ffffff25] transition-colors text-sm font-medium mt-auto self-start">
         <Play size={16} fill="currentColor" />
         Play
@@ -104,17 +114,21 @@ const CategoryRow = memo(function CategoryRow({ category, games, onClick, onView
         className="flex gap-1 overflow-x-auto pb-2 -ml-3 scrollbar-hide"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {games.map((game) => (
-          <AppCard
-            key={game.appName}
-            app={game}
-            onClick={onClick}
-            fallbackMap={fallback}
-            onImgError={onImgError}
-            itemTheme={theme}
-            itemStyles={styles}
-          />
-        ))}
+        {games.map((game, idx) => {
+          const cardKey = `${category}-${game.appName}-${idx}`;
+          return (
+            <AppCard
+              key={cardKey}
+              cardKey={cardKey}
+              app={game}
+              onClick={onClick}
+              fallbackMap={fallback}
+              onImgError={onImgError}
+              itemTheme={theme}
+              itemStyles={styles}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -275,6 +289,11 @@ const Games = memo(() => {
     [options.theme],
   );
 
+  const itemTheme = useMemo(
+    () => ({ ...theme, current: options.theme || 'default' }),
+    [options.theme],
+  );
+
   const placeholder = useMemo(() => `Search ${all.length} games`, [all.length]);
   const dynamicPlaceholder = useMemo(
     () =>
@@ -343,17 +362,21 @@ const Games = memo(() => {
         <>
           {filtered.paged.length > 0 ? (
             <div className="flex flex-wrap justify-center pb-2">
-              {filtered.paged.map((game) => (
-                <AppCard
-                  key={game.appName}
-                  app={game}
-                  onClick={navApp}
-                  fallbackMap={fallback}
-                  onImgError={handleImgError}
-                  itemTheme={{ ...theme, current: options.theme || 'default' }}
-                  itemStyles={styles}
-                />
-              ))}
+              {filtered.paged.map((game, idx) => {
+                const cardKey = `filtered-${game.appName}-${idx}`;
+                return (
+                  <AppCard
+                    key={cardKey}
+                    cardKey={cardKey}
+                    app={game}
+                    onClick={navApp}
+                    fallbackMap={fallback}
+                    onImgError={handleImgError}
+                    itemTheme={itemTheme}
+                    itemStyles={styles}
+                  />
+                );
+              })}
             </div>
           ) : (
             <div className="text-center text-sm opacity-70 pb-8">
@@ -385,7 +408,7 @@ const Games = memo(() => {
               onViewMore={handleViewMore}
               fallback={fallback}
               onImgError={handleImgError}
-              theme={{ ...theme, current: options.theme || 'default' }}
+              theme={itemTheme}
               styles={styles}
             />
           ))}
