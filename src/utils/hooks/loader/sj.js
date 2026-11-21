@@ -100,7 +100,7 @@ const PROBE_URL = 'https://www.gstatic.com/generate_204';
 const PROBE_TIMEOUT_MS = 5000;
 const HEALTHY_FOR_MS = 30000;
 const RETRY_DELAYS_MS = [300, 1200];
-export const LIBCURL_CONNECTIONS = isStaticBuild ? [6, 10, 4] : [32, 10, 8];
+const LIBCURL_CONNECTIONS = [32, 10, 8];
 const wispUrls = new Set();
 const wispSockets = new Set();
 
